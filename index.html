@@ -348,19 +348,24 @@
 
         try {
             const response = await fetch(`${BASE_URL}/pt-auth?uid=${uid}`);
-            const data = await response.json();
+            let data = await response.json();
             
-            if (data.role === 'SUPER') {
+            // Unbox array responses from n8n
+            if (Array.isArray(data) && data.length > 0) {
+                data = data[0];
+            }
+            
+            if (data && data.role === 'SUPER') {
                 adminUid = uid;
                 switchView('super');
                 document.getElementById('btn-logout').style.display = 'block';
-            } else if (data.role === 'VET') {
+            } else if (data && data.role === 'VET') {
                 adminUid = uid;
                 document.getElementById('vet-welcome').innerText = 'Hola, ' + data.nombre;
                 switchView('vet');
                 document.getElementById('btn-logout').style.display = 'block';
-            } else if (data.role === 'PET') {
-                renderPublicPet(data.full_data);
+            } else if (data && (data.role === 'PET' || data.especie)) {
+                renderPublicPet(data.full_data || data);
             } else {
                 showMsg('main', 'error', 'Pulsera no reconocida o sin registro.');
                 soundError();
@@ -418,8 +423,10 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body)
             });
-            const backResult = await res.json();
-            if (backResult.status === 'success') {
+            let backResult = await res.json();
+            if (Array.isArray(backResult) && backResult.length > 0) backResult = backResult[0];
+
+            if (backResult && backResult.status === 'success') {
                 showMsg('vet', 'success', '¡Registro Exitoso! Pulsera vinculada.');
                 setTimeout(() => location.reload(), 3000);
             } else {
@@ -450,8 +457,10 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
-            const result = await res.json();
-            if (result.status === 'success') {
+            let result = await res.json();
+            if (Array.isArray(result) && result.length > 0) result = result[0];
+
+            if (result && result.status === 'success') {
                 showMsg('super', 'success', 'Veterinaria registrada con éxito.');
                 setTimeout(() => location.reload(), 2500);
             } else {
