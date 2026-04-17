@@ -241,6 +241,12 @@
 
         <div style="margin-bottom: 30px; border-top: 1px solid #334155; padding-top: 25px;">
             <label>2. Perfil de la Mascota</label>
+            <div style="margin-bottom: 20px; text-align: center;">
+                <input type="file" id="reg-p-foto" accept="image/*" capture="environment" style="display: none;" onchange="previewFoto(event)">
+                <label for="reg-p-foto" class="btn btn-outline" style="margin: 0;">📸 Tomar Foto</label>
+                <br>
+                <img id="foto-preview" src="" style="max-width: 150px; max-height: 150px; object-fit: cover; border-radius: 12px; margin-top: 15px; display: none; border: 2px solid var(--primary);">
+            </div>
             <input type="text" id="reg-p-nombre" placeholder="Nombre Mascota" style="margin-bottom: 12px;">
             <div style="display: flex; gap: 10px; margin-bottom: 12px;">
                 <input type="text" id="reg-p-especie" placeholder="Especie">
@@ -371,9 +377,36 @@
                 soundError();
             }
         } catch (e) {
-            showMsg('main', 'error', 'Error conectando con el servidor.');
+            showMsg('main', 'error', 'Fallo de conexión al servidor al verificar identidad.');
             soundError();
         }
+    }
+
+    let fotoBase64 = "";
+    function previewFoto(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const maxW = 400; const maxH = 400;
+                let w = img.width; let h = img.height;
+                if (w > h && w > maxW) { h *= maxW / w; w = maxW; }
+                else if (h > maxH) { w *= maxH / h; h = maxH; }
+                canvas.width = w; canvas.height = h;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, w, h);
+                fotoBase64 = canvas.toDataURL('image/jpeg', 0.8);
+                const prev = document.getElementById('foto-preview');
+                prev.src = fotoBase64;
+                prev.style.display = 'inline-block';
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
     }
 
     function renderPublicPet(pet) {
@@ -393,7 +426,29 @@
         switchView('public');
     }
 
+    async function checkDuplicateBracelet(uid) {
+        try {
+            const authRes = await fetch(`${BASE_URL}/pt-auth?uid=${uid}`);
+            let authData = await authRes.json();
+            if (Array.isArray(authData) && authData.length > 0) authData = authData[0];
+            
+            // Si tiene rol o datos de especie, ya está asignada
+            if (authData && (authData.role === 'SUPER' || authData.role === 'VET' || authData.role === 'PET' || authData.especie)) {
+                return true; // Duplicada
+            }
+            return false;
+        } catch(e) {
+            return false; // Ignorar fallo de red, asumimos no duplicada para no trabar
+        }
+    }
+
     async function submitRegistration() {
+        if (!document.getElementById('reg-d-nombre').value || !document.getElementById('reg-p-nombre').value) {
+            showMsg('vet', 'error', 'El nombre del dueño y de la mascota son obligatorios.');
+            soundError();
+            return;
+        }
+
         const body = {
             admin_uid: adminUid,
             dueno_nombre: document.getElementById('reg-d-nombre').value,
@@ -404,20 +459,24 @@
             raza: document.getElementById('reg-p-raza').value,
             condiciones: document.getElementById('reg-p-med').value,
             temperamento: document.getElementById('reg-p-temp').value,
-            foto_url: "" // Por ahora vacío, se puede implementar upload después
+            foto_url: fotoBase64 // Se envía en base64 u otra estrategia en backend
         };
 
-        if (!body.dueno_nombre || !body.pet_nombre) {
-            showMsg('vet', 'error', 'Nombre de dueño y mascota obligatorios.');
-            return;
-        }
-
-        showMsg('vet', 'info', 'Escanea la pulsera del collar para finalizar...');
+        showMsg('vet', 'info', 'Escanea la pulsera NFC de la mascota para asignar...');
         const petUid = await getNfcUid();
         if (!petUid) return;
         body.pet_uid = petUid;
 
+        showMsg('vet', 'info', 'Verificando pulsera...');
+        const isDuplicate = await checkDuplicateBracelet(petUid);
+        if (isDuplicate) {
+            showMsg('vet', 'error', 'Esta pulsera ya está asignada a otra mascota o usuario. Por favor usa una pulsera nueva.');
+            soundError();
+            return;
+        }
+
         try {
+            showMsg('vet', 'info', 'Guardando datos de la mascota...');
             const res = await fetch(`${BASE_URL}/pt-reg-pet`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -427,13 +486,16 @@
             if (Array.isArray(backResult) && backResult.length > 0) backResult = backResult[0];
 
             if (backResult && backResult.status === 'success') {
-                showMsg('vet', 'success', '¡Registro Exitoso! Pulsera vinculada.');
+                showMsg('vet', 'success', '¡Registro Exitoso! Pulsera vinculada a la mascota.');
+                soundOk();
                 setTimeout(() => location.reload(), 3000);
             } else {
-                showMsg('vet', 'error', 'Error al guardar.');
+                showMsg('vet', 'error', 'Error en base de datos al guardar mascota. Inténtalo otra vez.');
+                soundError();
             }
         } catch (e) {
-            showMsg('vet', 'error', 'Fallo de red.');
+            showMsg('vet', 'error', 'Fallo de conexión al enviar el registro.');
+            soundError();
         }
     }
 
@@ -444,14 +506,27 @@
             direccion: document.getElementById('sup-dir').value
         };
 
-        if (!payload.nombre) { alert("Nombre de veterinaria es obligatorio."); return; }
+        if (!payload.nombre) { 
+            showMsg('super', 'error', 'El nombre de veterinaria es obligatorio.'); 
+            soundError();
+            return; 
+        }
 
-        showMsg('super', 'info', 'Escanea la pulsera maestra de la clínica...');
+        showMsg('super', 'info', 'Escanea la pulsera maestra NFC de la clínica...');
         const vUid = await getNfcUid();
         if (!vUid) return;
         payload.nfc_uid = vUid;
 
+        showMsg('super', 'info', 'Verificando pulsera...');
+        const isDuplicate = await checkDuplicateBracelet(vUid);
+        if (isDuplicate) {
+            showMsg('super', 'error', 'Esta pulsera ya está registrada en otra clínica, usuario o mascota. Usa una nueva.');
+            soundError();
+            return;
+        }
+
         try {
+            showMsg('super', 'info', 'Activando clínica...');
             const res = await fetch(`${BASE_URL}/pt-reg-vet`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -461,12 +536,17 @@
             if (Array.isArray(result) && result.length > 0) result = result[0];
 
             if (result && result.status === 'success') {
-                showMsg('super', 'success', 'Veterinaria registrada con éxito.');
-                setTimeout(() => location.reload(), 2500);
+                showMsg('super', 'success', 'Veterinaria registrada. Pulsera maestra activada.');
+                soundOk();
+                setTimeout(() => location.reload(), 3000);
             } else {
-                showMsg('super', 'error', 'Error al registrar.');
+                showMsg('super', 'error', 'Error interno al registrar la clínica en base de datos.');
+                soundError();
             }
-        } catch (e) { showMsg('super', 'error', 'Error de red.'); }
+        } catch (e) { 
+            showMsg('super', 'error', 'Fallo de conexión al enviar registro de clínica.'); 
+            soundError();
+        }
     }
 
     function switchView(id) {
