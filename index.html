@@ -353,15 +353,7 @@
         }
     }
 
-    async function handleNfcAuth() {
-        showMsg('main', 'info', 'Esperando NFC...');
-        document.getElementById('main-scan-btn').classList.add('scanning-pulse');
-        
-        const uid = await getNfcUid();
-        document.getElementById('main-scan-btn').classList.remove('scanning-pulse');
-        
-        if (!uid) { showMsg('main', 'error', 'No se detectó pulsera.'); return; }
-
+    async function processAuth(uid) {
         try {
             const response = await fetch(`${BASE_URL}/pt-auth?uid=${uid}`);
             let data = await response.json();
@@ -391,6 +383,28 @@
             soundError();
         }
     }
+
+    async function handleNfcAuth() {
+        showMsg('main', 'info', 'Esperando NFC...');
+        document.getElementById('main-scan-btn').classList.add('scanning-pulse');
+        
+        const uid = await getNfcUid();
+        document.getElementById('main-scan-btn').classList.remove('scanning-pulse');
+        
+        if (!uid) { showMsg('main', 'error', 'No se detectó pulsera.'); return; }
+        
+        await processAuth(uid);
+    }
+
+    window.onload = () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const externalUid = urlParams.get('uid');
+        if (externalUid) {
+            document.getElementById('main-scan-btn').style.display = 'none';
+            showMsg('main', 'info', 'Cargando datos de pulsera...');
+            processAuth(externalUid);
+        }
+    };
 
     let fotoBase64 = "";
     function previewFoto(event) {
