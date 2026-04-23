@@ -246,10 +246,14 @@
         <div style="margin-bottom: 30px; border-top: 1px solid #334155; padding-top: 25px;">
             <label>2. Perfil de la Mascota</label>
             <div style="margin-bottom: 20px; text-align: center;">
-                <input type="file" id="reg-p-foto" accept="image/*" capture="environment" style="display: none;" onchange="previewFoto(event)">
-                <label for="reg-p-foto" class="btn btn-outline" style="margin: 0;">📸 Tomar Foto</label>
-                <br>
-                <img id="foto-preview" src="" style="max-width: 150px; max-height: 150px; object-fit: cover; border-radius: 12px; margin-top: 15px; display: none; border: 2px solid var(--primary);">
+                <div style="display: flex; gap: 10px; justify-content: center; margin-bottom: 15px;">
+                    <input type="file" id="reg-p-foto" accept="image/*" capture="environment" style="display: none;" onchange="previewFoto(event)">
+                    <label for="reg-p-foto" class="btn btn-outline" style="margin: 0; flex: 1; padding: 12px; font-size: 0.9rem;">📸 Tomar Foto</label>
+                    
+                    <input type="file" id="reg-p-foto-upload" accept="image/*" style="display: none;" onchange="previewFoto(event)">
+                    <label for="reg-p-foto-upload" class="btn btn-outline" style="margin: 0; flex: 1; padding: 12px; font-size: 0.9rem;">🖼️ Subir Foto</label>
+                </div>
+                <img id="foto-preview" src="" style="max-width: 150px; max-height: 150px; object-fit: cover; border-radius: 12px; display: none; border: 2px solid var(--primary); margin: 0 auto;">
             </div>
             <input type="text" id="reg-p-nombre" placeholder="Nombre Mascota" style="margin-bottom: 12px;">
             <div style="display: flex; gap: 10px; margin-bottom: 12px;">
