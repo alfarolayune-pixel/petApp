@@ -649,8 +649,8 @@
             el.className = 'history-card';
             el.innerHTML = `
                 <div class="history-actions">
-                    <button class="action-btn" title="Editar" onclick="editVet(${vet.id}, '${vet.nombre}', '${vet.telefono}', '${vet.direccion}')">✏️</button>
-                    <button class="action-btn" title="Dar de Baja" onclick="deleteVet(${vet.id}, '${vet.nombre}')">🗑️</button>
+                    <button class="action-btn" title="Editar" onclick="editVet('${vet.id}', '${vet.nombre}', '${vet.telefono}', '${vet.direccion}')">✏️</button>
+                    <button class="action-btn" title="Dar de Baja" onclick="deleteVet('${vet.id}', '${vet.nombre}')">🗑️</button>
                 </div>
                 <h4 class="history-title">${vet.nombre}</h4>
                 <p class="history-sub">Mascotas Activas: <strong>${vet.total_mascotas || 0}</strong></p>
