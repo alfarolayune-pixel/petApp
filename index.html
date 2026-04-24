@@ -168,6 +168,16 @@
             50% { transform: scale(1.03); opacity: 0.8; }
             100% { transform: scale(1); opacity: 1; }
         }
+
+        /* --- History Cards --- */
+        .history-section { margin-top: 40px; border-top: 1px solid #334155; padding-top: 25px; }
+        .history-card { background: rgba(0,0,0,0.2); border: 1px solid #334155; border-radius: 16px; padding: 15px; margin-bottom: 10px; text-align: left; position: relative; transition: all 0.2s; }
+        .history-card:hover { border-color: var(--primary); }
+        .history-title { font-weight: 700; font-size: 1.05rem; color: #fff; margin: 0 0 4px 0; }
+        .history-sub { font-size: 0.85rem; color: var(--text-muted); margin: 0; }
+        .history-actions { position: absolute; right: 15px; top: 15px; display: flex; gap: 10px; }
+        .action-btn { background: none; border: none; font-size: 1.1rem; cursor: pointer; opacity: 0.7; transition: opacity 0.2s; padding: 0; }
+        .action-btn:hover { opacity: 1; transform: scale(1.1); }
     </style>
 </head>
 <body>
@@ -272,6 +282,15 @@
             ✅ Finalizar y Escanear Pulsera
         </button>
         <div id="status-vet" class="status-msg"></div>
+
+        <div class="history-section">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h4 style="margin: 0; color: var(--primary);">Últimas Mascotas</h4>
+                <span class="badge" id="vet-total-badge" style="margin:0;">Total: 0</span>
+            </div>
+            <div id="vet-history-list"></div>
+            <button id="btn-vet-more" class="btn btn-outline" style="margin-top: 15px; display: none;" onclick="showMoreVetHistory()">Mostrar Más</button>
+        </div>
     </div>
 
     <!-- VIEW: SUPER ADMIN -->
@@ -296,6 +315,15 @@
             🏪 Activar Clínica (Escanear NFC)
         </button>
         <div id="status-super" class="status-msg"></div>
+
+        <div class="history-section">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h4 style="margin: 0; color: var(--secondary);">Últimas Clínicas</h4>
+                <span class="badge" id="super-total-badge" style="margin:0; background: rgba(99, 102, 241, 0.15); color: var(--secondary);">Total: 0</span>
+            </div>
+            <div id="super-history-list"></div>
+            <button id="btn-super-more" class="btn btn-outline" style="margin-top: 15px; display: none; border-color: var(--secondary); color: var(--secondary);" onclick="showMoreSuperHistory()">Mostrar Más</button>
+        </div>
     </div>
 </div>
 
@@ -311,6 +339,10 @@
     
     let adminUid = null;
     let scanTimeout = null;
+    let vetHistory = [];
+    let vetLimit = 5;
+    let superHistory = [];
+    let superLimit = 5;
 
     // --- Audio Feedback ---
     const playSound = (freq, type, duration) => {
@@ -369,11 +401,15 @@
             
             if (data && data.role === 'SUPER') {
                 adminUid = uid;
+                superHistory = data.history || [];
+                renderSuperHistory();
                 switchView('super');
                 document.getElementById('btn-logout').style.display = 'block';
             } else if (data && data.role === 'VET') {
                 adminUid = uid;
                 document.getElementById('vet-welcome').innerText = 'Hola, ' + data.nombre;
+                vetHistory = data.history || [];
+                renderVetHistory();
                 switchView('vet');
                 document.getElementById('btn-logout').style.display = 'block';
             } else if (data && (data.role === 'PET' || data.especie)) {
@@ -573,6 +609,124 @@
             }
         } catch (e) { 
             showMsg('super', 'error', 'Fallo de conexión al enviar registro de clínica.'); 
+            soundError();
+        }
+    }
+
+    function renderVetHistory() {
+        document.getElementById('vet-total-badge').innerText = `Total: ${vetHistory.length}`;
+        const container = document.getElementById('vet-history-list');
+        container.innerHTML = '';
+        const itemsToShow = vetHistory.slice(0, vetLimit);
+        
+        itemsToShow.forEach(pet => {
+            const el = document.createElement('div');
+            el.className = 'history-card';
+            el.innerHTML = `
+                <h4 class="history-title">${pet.pet_nombre} <span style="font-size:0.8rem; font-weight:normal; color:var(--primary);">- ${pet.especie} (${pet.raza})</span></h4>
+                <p class="history-sub">Dueño: ${pet.dueno_nombre}</p>
+                <p class="history-sub">Tel: ${pet.dueno_tel}</p>
+            `;
+            container.appendChild(el);
+        });
+
+        document.getElementById('btn-vet-more').style.display = vetHistory.length > vetLimit ? 'block' : 'none';
+    }
+
+    function showMoreVetHistory() {
+        vetLimit += 5;
+        renderVetHistory();
+    }
+
+    function renderSuperHistory() {
+        document.getElementById('super-total-badge').innerText = `Total: ${superHistory.length}`;
+        const container = document.getElementById('super-history-list');
+        container.innerHTML = '';
+        const itemsToShow = superHistory.slice(0, superLimit);
+        
+        itemsToShow.forEach(vet => {
+            const el = document.createElement('div');
+            el.className = 'history-card';
+            el.innerHTML = `
+                <div class="history-actions">
+                    <button class="action-btn" title="Editar" onclick="editVet(${vet.id}, '${vet.nombre}', '${vet.telefono}', '${vet.direccion}')">✏️</button>
+                    <button class="action-btn" title="Dar de Baja" onclick="deleteVet(${vet.id}, '${vet.nombre}')">🗑️</button>
+                </div>
+                <h4 class="history-title">${vet.nombre}</h4>
+                <p class="history-sub">Mascotas Activas: <strong>${vet.total_mascotas || 0}</strong></p>
+                <p class="history-sub" style="margin-top: 4px;">Tel: ${vet.telefono}</p>
+            `;
+            container.appendChild(el);
+        });
+
+        document.getElementById('btn-super-more').style.display = superHistory.length > superLimit ? 'block' : 'none';
+    }
+
+    function showMoreSuperHistory() {
+        superLimit += 5;
+        renderSuperHistory();
+    }
+
+    async function editVet(id, nombre, tel, dir) {
+        const newNombre = prompt("Editar Nombre de la Clínica:", nombre);
+        if (newNombre === null) return;
+        const newTel = prompt("Editar Teléfono:", tel);
+        if (newTel === null) return;
+        const newDir = prompt("Editar Dirección:", dir);
+        if (newDir === null) return;
+
+        showMsg('super', 'info', 'Actualizando clínica...');
+        try {
+            const res = await fetch(`${BASE_URL}/pt-edit-vet`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id, nombre: newNombre, telefono: newTel, direccion: newDir })
+            });
+            let result = await res.json();
+            if (Array.isArray(result) && result.length > 0) result = result[0];
+            if (result && result.status === 'success') {
+                showMsg('super', 'success', 'Clínica actualizada correctamente.');
+                soundOk();
+                const index = superHistory.findIndex(v => v.id === id);
+                if (index !== -1) {
+                    superHistory[index].nombre = newNombre;
+                    superHistory[index].telefono = newTel;
+                    superHistory[index].direccion = newDir;
+                    renderSuperHistory();
+                }
+            } else {
+                showMsg('super', 'error', 'Error al actualizar.');
+                soundError();
+            }
+        } catch (e) {
+            showMsg('super', 'error', 'Fallo de conexión.');
+            soundError();
+        }
+    }
+
+    async function deleteVet(id, nombre) {
+        if (!confirm(`¿Estás seguro que deseas dar de baja la veterinaria "${nombre}"?\nEsta acción eliminará el acceso de esta clínica.`)) return;
+        
+        showMsg('super', 'info', 'Eliminando clínica...');
+        try {
+            const res = await fetch(`${BASE_URL}/pt-del-vet`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id })
+            });
+            let result = await res.json();
+            if (Array.isArray(result) && result.length > 0) result = result[0];
+            if (result && result.status === 'success') {
+                showMsg('super', 'success', 'Clínica eliminada.');
+                soundOk();
+                superHistory = superHistory.filter(v => v.id !== id);
+                renderSuperHistory();
+            } else {
+                showMsg('super', 'error', 'Error al eliminar. Podría tener mascotas asociadas.');
+                soundError();
+            }
+        } catch (e) {
+            showMsg('super', 'error', 'Fallo de conexión.');
             soundError();
         }
     }
