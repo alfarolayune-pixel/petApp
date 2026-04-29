@@ -240,9 +240,14 @@
                 <div id="pub-med" class="info-text">---</div>
             </div>
 
-            <button class="btn btn-secondary" id="btn-whatsapp" style="margin-top: 20px;">
-                💬 Contactar al Dueño
-            </button>
+            <div style="display: flex; gap: 15px; margin-top: 20px;">
+                <button class="btn" id="btn-call" style="background: var(--primary); color: #134e4a; flex: 1; padding: 15px 10px; font-size: 0.9rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3);">
+                    📞 Llamar
+                </button>
+                <button class="btn" id="btn-whatsapp" style="background: #25D366; color: white; flex: 1; padding: 15px 10px; font-size: 0.9rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3);">
+                    💬 WhatsApp
+                </button>
+            </div>
 
             <div class="vet-footer">
                 <div class="info-label">Registrado en:</div>
@@ -557,6 +562,7 @@
         
         const waLink = `https://wa.me/${pet.dueno_tel}?text=Hola,%20encontré%20a%20tu%20mascota%20${pet.nombre}%20mediante%20su%20PeTApp`;
         document.getElementById('btn-whatsapp').onclick = () => window.open(waLink, '_blank');
+        document.getElementById('btn-call').onclick = () => window.location.href = `tel:${pet.dueno_tel}`;
         
         switchView('public');
     }
