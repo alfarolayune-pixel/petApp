@@ -184,7 +184,7 @@
 
 <div class="app-container">
     <div class="branding">
-        <button id="btn-logout" class="logout-btn" onclick="location.reload()">Cerrar Sesión</button>
+        <button id="btn-logout" class="logout-btn" onclick="window.location.href = window.location.pathname">Cerrar Sesión</button>
         <img src="Logo_TechTap.jpeg" alt="Logo TechTap" style="max-height: 140px; max-width: 90%; margin-top: 5px; object-fit: contain; filter: drop-shadow(0 4px 10px rgba(0,0,0,0.5));">
     </div>
 
@@ -251,7 +251,7 @@
                 <div id="pub-vet-dir" style="font-size: 0.85rem; color: var(--text-muted);">Dirección...</div>
             </div>
         </div>
-        <button class="btn btn-outline" onclick="location.reload()" style="margin-top: 25px;">Nueva Lectura</button>
+        <button class="btn btn-outline" onclick="window.location.href = window.location.pathname" style="margin-top: 25px;">Nueva Lectura</button>
     </div>
 
     <!-- VIEW: VET ADMIN (REGISTRATION) -->
@@ -328,7 +328,7 @@
         
         <div id="owner-pets-list"></div>
         <div id="status-owner" class="status-msg"></div>
-        <button class="btn btn-outline" onclick="location.reload()" style="margin-top: 25px;">Volver al Inicio</button>
+        <button class="btn btn-outline" onclick="window.location.href = window.location.pathname" style="margin-top: 25px;">Volver al Inicio</button>
     </div>
 
     <!-- VIEW: SUPER ADMIN -->
@@ -482,6 +482,9 @@
         const urlParams = new URLSearchParams(window.location.search);
         const externalUid = urlParams.get('uid');
         if (externalUid) {
+            // Limpiar la URL para evitar ciclos al refrescar
+            window.history.replaceState({}, document.title, window.location.pathname);
+            
             document.getElementById('main-scan-btn').style.display = 'none';
             showMsg('main', 'info', 'Cargando datos de PeTApp...');
             processAuth(externalUid);
@@ -657,7 +660,7 @@
             if (backResult && backResult.status === 'success') {
                 showMsg('vet', 'success', '¡Registro Exitoso! PeTApp vinculado a la mascota.');
                 soundOk();
-                setTimeout(() => location.reload(), 3000);
+                setTimeout(() => window.location.href = window.location.pathname, 3000);
             } else {
                 showMsg('vet', 'error', 'Error en base de datos al guardar mascota. Inténtalo otra vez.');
                 soundError();
@@ -707,7 +710,7 @@
             if (result && result.status === 'success') {
                 showMsg('super', 'success', 'Veterinaria registrada. PeTApp maestro activado.');
                 soundOk();
-                setTimeout(() => location.reload(), 3000);
+                setTimeout(() => window.location.href = window.location.pathname, 3000);
             } else {
                 showMsg('super', 'error', 'Error interno al registrar la clínica en base de datos.');
                 soundError();
@@ -831,7 +834,7 @@
             if (result && result.status === 'success') {
                 showMsg(viewType, 'success', 'Estado actualizado correctamente.');
                 soundOk();
-                setTimeout(() => location.reload(), 1500);
+                setTimeout(() => window.location.href = window.location.pathname, 1500);
             } else {
                 showMsg(viewType, 'error', 'Error al actualizar el estado.');
                 soundError();
