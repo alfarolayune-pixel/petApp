@@ -185,8 +185,7 @@
 <div class="app-container">
     <div class="branding">
         <button id="btn-logout" class="logout-btn" onclick="location.reload()">Cerrar Sesión</button>
-        <h1>PeTApp</h1>
-        <span>Identidad Protegida</span>
+        <img src="Logo_TechTap.jpeg" alt="Logo TechTap" style="max-height: 80px; margin-top: 10px;">
     </div>
 
     <!-- VIEW: SCAN / HOME -->
@@ -196,10 +195,10 @@
                 <img src="PeTApp_Logo.jpeg" alt="PeTApp Logo" style="width: 160px; height: 160px; object-fit: cover; border-radius: 50%; box-shadow: 0 10px 25px rgba(0,0,0,0.5); border: 4px solid var(--primary);">
             </div>
             <h2 style="font-size: 1.8rem; margin-bottom: 15px;">Bienvenido</h2>
-            <p style="color: var(--text-muted); margin-bottom: 40px; line-height: 1.6;">Acerca el teléfono a la pulsera del collar para ver los datos de la mascota o ingresar como administrador.</p>
+            <p style="color: var(--text-muted); margin-bottom: 40px; line-height: 1.6;">Acerca el teléfono al dispositivo PeTApp del collar para ver los datos de la mascota o ingresar como administrador.</p>
             
             <button class="btn btn-primary" onclick="handleNfcAuth()" id="main-scan-btn">
-                📡 Escanear Pulsera
+                📡 Escanear PeTApp
             </button>
             <div id="status-main" class="status-msg"></div>
         </div>
@@ -222,6 +221,16 @@
                 <div id="pub-temp" class="info-text">---</div>
             </div>
             
+            <div class="info-panel" style="border-left-color: var(--success);">
+                <div class="info-label">💉 Estado de Vacunación</div>
+                <div id="pub-vacunacion" class="info-text">---</div>
+            </div>
+
+            <div class="info-panel" style="border-left-color: var(--warning);">
+                <div class="info-label">🎂 Edad</div>
+                <div id="pub-edad" class="info-text">---</div>
+            </div>
+
             <div class="info-panel" style="border-left-color: var(--danger);">
                 <div class="info-label">🏥 Condición Médica</div>
                 <div id="pub-med" class="info-text">---</div>
@@ -270,6 +279,17 @@
                 <input type="text" id="reg-p-especie" placeholder="Especie">
                 <input type="text" id="reg-p-raza" placeholder="Raza">
             </div>
+            <div style="display: flex; gap: 10px; margin-bottom: 12px;">
+                <div style="flex: 1;">
+                    <label for="reg-p-fecha-nac" style="margin-bottom: 5px; font-size: 0.7rem;">Fecha de Nacimiento</label>
+                    <input type="date" id="reg-p-fecha-nac" onchange="calcularEdad()">
+                </div>
+                <div style="flex: 1;">
+                    <label for="reg-p-edad" style="margin-bottom: 5px; font-size: 0.7rem;">Edad Calculada</label>
+                    <input type="text" id="reg-p-edad" placeholder="Edad" readonly style="background: rgba(0,0,0,0.5); color: var(--text-muted);">
+                </div>
+            </div>
+            <input type="text" id="reg-p-vacunacion" placeholder="Estado de Vacunación (Ej: Completo, Faltan vacunas)" style="margin-bottom: 12px;">
             <textarea id="reg-p-med" placeholder="Condiciones médicas / Alergias" style="margin-bottom: 12px; height: 80px;"></textarea>
             <select id="reg-p-temp" style="margin-bottom: 12px;">
                 <option value="Dócil y cariñoso">Dócil y cariñoso</option>
@@ -279,7 +299,7 @@
         </div>
 
         <button class="btn btn-primary" onclick="submitRegistration()">
-            ✅ Finalizar y Escanear Pulsera
+            ✅ Finalizar y Escanear PeTApp
         </button>
         <div id="status-vet" class="status-msg"></div>
 
@@ -296,7 +316,7 @@
     <!-- VIEW: SUPER ADMIN -->
     <div id="view-super" class="view">
         <h3 style="margin-top: 0; color: var(--secondary);">Registro de Veterinarias</h3>
-        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 30px;">Vende el sistema y activa la pulsera maestra de la clínica.</p>
+        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 30px;">Vende el sistema y activa el PeTApp maestro de la clínica.</p>
         
         <div class="form-group">
             <label>Nombre de la Clínica</label>
@@ -415,7 +435,7 @@
             } else if (data && (data.role === 'PET' || data.especie)) {
                 renderPublicPet(data.full_data || data);
             } else {
-                showMsg('main', 'error', 'Pulsera no reconocida o sin registro.');
+                showMsg('main', 'error', 'PeTApp no reconocido o sin registro.');
                 soundError();
             }
         } catch (e) {
@@ -431,7 +451,7 @@
         const uid = await getNfcUid();
         document.getElementById('main-scan-btn').classList.remove('scanning-pulse');
         
-        if (!uid) { showMsg('main', 'error', 'No se detectó pulsera.'); return; }
+        if (!uid) { showMsg('main', 'error', 'No se detectó PeTApp.'); return; }
         
         await processAuth(uid);
     }
@@ -441,7 +461,7 @@
         const externalUid = urlParams.get('uid');
         if (externalUid) {
             document.getElementById('main-scan-btn').style.display = 'none';
-            showMsg('main', 'info', 'Cargando datos de pulsera...');
+            showMsg('main', 'info', 'Cargando datos de PeTApp...');
             processAuth(externalUid);
         }
     };
@@ -473,15 +493,36 @@
         reader.readAsDataURL(file);
     }
 
+    function calcularEdad() {
+        const fechaNac = document.getElementById('reg-p-fecha-nac').value;
+        if (!fechaNac) return;
+        const hoy = new Date();
+        const nac = new Date(fechaNac);
+        let edad = hoy.getFullYear() - nac.getFullYear();
+        const m = hoy.getMonth() - nac.getMonth();
+        if (m < 0 || (m === 0 && hoy.getDate() < nac.getDate())) {
+            edad--;
+        }
+        let textEdad = edad + ' años';
+        if (edad === 0) {
+            let meses = m;
+            if (meses < 0) meses += 12;
+            textEdad = meses + ' meses';
+        }
+        document.getElementById('reg-p-edad').value = textEdad;
+    }
+
     function renderPublicPet(pet) {
         document.getElementById('pub-foto').src = pet.foto_url || "https://img.freepik.com/vector-premium/lindo-perro-dibujos-animados-huella-pata-avatar-mascota_611849-14.jpg";
         document.getElementById('pub-name').innerText = pet.nombre;
-        document.getElementById('pub-especie').innerText = pet.especie;
-        document.getElementById('pub-raza').innerText = pet.raza;
-        document.getElementById('pub-temp').innerText = pet.temperamento;
-        document.getElementById('pub-med').innerText = pet.condiciones_medicas;
-        document.getElementById('pub-vet-name').innerText = pet.vet_nombre;
-        document.getElementById('pub-vet-tel').innerText = 'Tel: ' + pet.vet_tel;
+        document.getElementById('pub-especie').innerText = 'Especie: ' + (pet.especie || 'N/A');
+        document.getElementById('pub-raza').innerText = 'Raza: ' + (pet.raza || 'N/A');
+        document.getElementById('pub-temp').innerText = pet.temperamento || '---';
+        document.getElementById('pub-med').innerText = pet.condiciones_medicas || '---';
+        document.getElementById('pub-vacunacion').innerText = pet.estado_vacunacion || '---';
+        document.getElementById('pub-edad').innerText = pet.edad || '---';
+        document.getElementById('pub-vet-name').innerText = pet.vet_nombre || 'Desconocido';
+        document.getElementById('pub-vet-tel').innerText = 'Tel: ' + (pet.vet_tel || '---');
         document.getElementById('pub-vet-dir').innerText = pet.vet_direccion || 'Consulta con la veterinaria.';
         
         const waLink = `https://wa.me/${pet.dueno_tel}?text=Hola,%20encontré%20a%20tu%20mascota%20${pet.nombre}%20mediante%20su%20PeTApp`;
@@ -521,20 +562,23 @@
             pet_nombre: document.getElementById('reg-p-nombre').value,
             especie: document.getElementById('reg-p-especie').value,
             raza: document.getElementById('reg-p-raza').value,
+            fecha_nacimiento: document.getElementById('reg-p-fecha-nac').value,
+            edad: document.getElementById('reg-p-edad').value,
+            estado_vacunacion: document.getElementById('reg-p-vacunacion').value,
             condiciones: document.getElementById('reg-p-med').value,
             temperamento: document.getElementById('reg-p-temp').value,
             foto_url: fotoBase64 // Se envía en base64 u otra estrategia en backend
         };
 
-        showMsg('vet', 'info', 'Escanea la pulsera NFC de la mascota para asignar...');
+        showMsg('vet', 'info', 'Escanea el PeTApp NFC de la mascota para asignar...');
         const petUid = await getNfcUid();
         if (!petUid) return;
         body.pet_uid = petUid;
 
-        showMsg('vet', 'info', 'Verificando pulsera...');
+        showMsg('vet', 'info', 'Verificando PeTApp...');
         const isDuplicate = await checkDuplicateBracelet(petUid);
         if (isDuplicate) {
-            showMsg('vet', 'error', 'Esta pulsera ya está asignada a otra mascota o usuario. Por favor usa una pulsera nueva.');
+            showMsg('vet', 'error', 'Este PeTApp ya está asignado a otra mascota o usuario. Por favor usa un PeTApp nuevo.');
             soundError();
             return;
         }
@@ -550,7 +594,7 @@
             if (Array.isArray(backResult) && backResult.length > 0) backResult = backResult[0];
 
             if (backResult && backResult.status === 'success') {
-                showMsg('vet', 'success', '¡Registro Exitoso! Pulsera vinculada a la mascota.');
+                showMsg('vet', 'success', '¡Registro Exitoso! PeTApp vinculado a la mascota.');
                 soundOk();
                 setTimeout(() => location.reload(), 3000);
             } else {
@@ -576,15 +620,15 @@
             return; 
         }
 
-        showMsg('super', 'info', 'Escanea la pulsera maestra NFC de la clínica...');
+        showMsg('super', 'info', 'Escanea el PeTApp maestro NFC de la clínica...');
         const vUid = await getNfcUid();
         if (!vUid) return;
         payload.nfc_uid = vUid;
 
-        showMsg('super', 'info', 'Verificando pulsera...');
+        showMsg('super', 'info', 'Verificando PeTApp...');
         const isDuplicate = await checkDuplicateBracelet(vUid);
         if (isDuplicate) {
-            showMsg('super', 'error', 'Esta pulsera ya está registrada en otra clínica, usuario o mascota. Usa una nueva.');
+            showMsg('super', 'error', 'Este PeTApp ya está registrado en otra clínica, usuario o mascota. Usa uno nuevo.');
             soundError();
             return;
         }
@@ -600,7 +644,7 @@
             if (Array.isArray(result) && result.length > 0) result = result[0];
 
             if (result && result.status === 'success') {
-                showMsg('super', 'success', 'Veterinaria registrada. Pulsera maestra activada.');
+                showMsg('super', 'success', 'Veterinaria registrada. PeTApp maestro activado.');
                 soundOk();
                 setTimeout(() => location.reload(), 3000);
             } else {
@@ -624,6 +668,7 @@
             el.className = 'history-card';
             el.innerHTML = `
                 <h4 class="history-title">${pet.pet_nombre} <span style="font-size:0.8rem; font-weight:normal; color:var(--primary);">- ${pet.especie} (${pet.raza})</span></h4>
+                <p class="history-sub">ID PeTApp: ${pet.nfc_uid || pet.pet_uid || '---'}</p>
                 <p class="history-sub">Dueño: ${pet.dueno_nombre}</p>
                 <p class="history-sub">Tel: ${pet.dueno_tel}</p>
             `;
