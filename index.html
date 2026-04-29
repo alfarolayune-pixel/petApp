@@ -259,7 +259,11 @@
             <label>1. Datos del Propietario</label>
             <input type="text" id="reg-d-nombre" placeholder="Nombre completo" style="margin-bottom: 12px;">
             <input type="tel" id="reg-d-tel" placeholder="WhatsApp (Ej: 449...)" style="margin-bottom: 12px;">
-            <input type="text" id="reg-d-dir" placeholder="Dirección (Opcional)">
+            <input type="text" id="reg-d-dir" placeholder="Dirección (Opcional)" style="margin-bottom: 12px;">
+            <button class="btn btn-outline" id="btn-scan-dueno" onclick="scanDuenoUid()" style="padding: 12px; font-size: 0.85rem;">
+                🔗 Vincular PeTApp Dueño (Opcional)
+            </button>
+            <input type="hidden" id="reg-d-uid" value="">
         </div>
 
         <div style="margin-bottom: 30px; border-top: 1px solid #334155; padding-top: 25px;">
@@ -538,12 +542,38 @@
             if (Array.isArray(authData) && authData.length > 0) authData = authData[0];
             
             // Si tiene rol o datos de especie, ya está asignada
-            if (authData && (authData.role === 'SUPER' || authData.role === 'VET' || authData.role === 'PET' || authData.especie)) {
+            if (authData && (authData.role === 'SUPER' || authData.role === 'VET' || authData.role === 'PET' || authData.role === 'OWNER' || authData.especie)) {
                 return true; // Duplicada
             }
             return false;
         } catch(e) {
             return false; // Ignorar fallo de red, asumimos no duplicada para no trabar
+        }
+    }
+
+    async function scanDuenoUid() {
+        showMsg('vet', 'info', 'Acerca el PeTApp del dueño ahora...');
+        const uid = await getNfcUid(10);
+        if (!uid) return;
+        
+        showMsg('vet', 'info', 'Verificando disponibilidad...');
+        const isDuplicate = await checkDuplicateBracelet(uid);
+        if (isDuplicate) {
+            showMsg('vet', 'error', 'Este PeTApp ya está en uso. Usa uno nuevo.');
+            soundError();
+            document.getElementById('reg-d-uid').value = '';
+            document.getElementById('btn-scan-dueno').innerText = '🔗 Vincular PeTApp Dueño (Opcional)';
+            document.getElementById('btn-scan-dueno').style.background = 'transparent';
+            document.getElementById('btn-scan-dueno').style.color = 'var(--primary)';
+            document.getElementById('btn-scan-dueno').style.borderColor = 'var(--primary)';
+        } else {
+            showMsg('vet', 'success', 'PeTApp de dueño vinculado.');
+            soundOk();
+            document.getElementById('reg-d-uid').value = uid;
+            document.getElementById('btn-scan-dueno').innerText = '✅ PeTApp Dueño Vinculado';
+            document.getElementById('btn-scan-dueno').style.background = 'rgba(16, 185, 129, 0.15)';
+            document.getElementById('btn-scan-dueno').style.color = 'var(--success)';
+            document.getElementById('btn-scan-dueno').style.borderColor = 'var(--success)';
         }
     }
 
@@ -559,6 +589,7 @@
             dueno_nombre: document.getElementById('reg-d-nombre').value,
             dueno_tel: document.getElementById('reg-d-tel').value,
             dueno_dir: document.getElementById('reg-d-dir').value,
+            dueno_uid: document.getElementById('reg-d-uid').value,
             pet_nombre: document.getElementById('reg-p-nombre').value,
             especie: document.getElementById('reg-p-especie').value,
             raza: document.getElementById('reg-p-raza').value,
@@ -573,6 +604,13 @@
         showMsg('vet', 'info', 'Escanea el PeTApp NFC de la mascota para asignar...');
         const petUid = await getNfcUid();
         if (!petUid) return;
+        
+        if (body.dueno_uid && body.dueno_uid === petUid) {
+            showMsg('vet', 'error', 'El PeTApp del dueño no puede ser el mismo que el de la mascota.');
+            soundError();
+            return;
+        }
+        
         body.pet_uid = petUid;
 
         showMsg('vet', 'info', 'Verificando PeTApp...');
