@@ -206,6 +206,10 @@
 
     <!-- VIEW: PUBLIC (LOST PET) -->
     <div id="view-public" class="view">
+        <div id="pub-alert-lost" style="display:none; background: var(--danger); color: white; padding: 15px; border-radius: 16px; margin-bottom: 20px; text-align: center; font-weight: 800; font-size: 1.1rem; box-shadow: 0 10px 25px rgba(244, 63, 94, 0.4); animation: pulse 1.5s infinite;">
+            🚨 ¡ESTA MASCOTA ESTÁ PERDIDA! 🚨<br>
+            <span style="font-size: 0.9rem; font-weight: 600;">Por favor, contacta al dueño inmediatamente.</span>
+        </div>
         <div class="pet-card">
             <div class="pet-photo-container">
                 <img id="pub-foto" src="" class="pet-photo" alt="Foto">
@@ -315,6 +319,16 @@
             <div id="vet-history-list"></div>
             <button id="btn-vet-more" class="btn btn-outline" style="margin-top: 15px; display: none;" onclick="showMoreVetHistory()">Mostrar Más</button>
         </div>
+    </div>
+
+    <!-- VIEW: OWNER -->
+    <div id="view-owner" class="view">
+        <h3 id="owner-welcome" style="margin-top: 0; color: var(--primary);">Bienvenido</h3>
+        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 30px;">Tus mascotas registradas en PeTApp.</p>
+        
+        <div id="owner-pets-list"></div>
+        <div id="status-owner" class="status-msg"></div>
+        <button class="btn btn-outline" onclick="location.reload()" style="margin-top: 25px;">Volver al Inicio</button>
     </div>
 
     <!-- VIEW: SUPER ADMIN -->
@@ -436,6 +450,10 @@
                 renderVetHistory();
                 switchView('vet');
                 document.getElementById('btn-logout').style.display = 'block';
+            } else if (data && data.role === 'OWNER') {
+                document.getElementById('owner-welcome').innerText = 'Hola, ' + data.nombre;
+                renderOwnerView(data.pets || []);
+                document.getElementById('btn-logout').style.display = 'block';
             } else if (data && (data.role === 'PET' || data.especie)) {
                 renderPublicPet(data.full_data || data);
             } else {
@@ -517,6 +535,11 @@
     }
 
     function renderPublicPet(pet) {
+        if (pet.esta_perdida) {
+            document.getElementById('pub-alert-lost').style.display = 'block';
+        } else {
+            document.getElementById('pub-alert-lost').style.display = 'none';
+        }
         document.getElementById('pub-foto').src = pet.foto_url || "https://img.freepik.com/vector-premium/lindo-perro-dibujos-animados-huella-pata-avatar-mascota_611849-14.jpg";
         document.getElementById('pub-name').innerText = pet.nombre;
         document.getElementById('pub-especie').innerText = 'Especie: ' + (pet.especie || 'N/A');
@@ -702,9 +725,18 @@
         const itemsToShow = vetHistory.slice(0, vetLimit);
         
         itemsToShow.forEach(pet => {
+            const isLost = pet.esta_perdida === true;
+            const btnColor = isLost ? 'var(--success)' : 'var(--danger)';
+            const btnText = isLost ? 'Mascota Encontrada' : 'Reportar Perdida';
+            
             const el = document.createElement('div');
             el.className = 'history-card';
+            if (isLost) el.style.borderColor = 'var(--danger)';
             el.innerHTML = `
+                ${isLost ? '<div style="color: var(--danger); font-size: 0.8rem; font-weight: bold; margin-bottom: 5px;">⚠️ REPORTADA COMO PERDIDA</div>' : ''}
+                <div class="history-actions">
+                    <button class="action-btn" title="${btnText}" style="color: ${btnColor}; opacity: 1;" onclick="toggleLostStatus('${pet.id}', ${isLost}, 'vet')">🚨</button>
+                </div>
                 <h4 class="history-title">${pet.pet_nombre} <span style="font-size:0.8rem; font-weight:normal; color:var(--primary);">- ${pet.especie} (${pet.raza})</span></h4>
                 <p class="history-sub">ID PeTApp: ${pet.nfc_uid || pet.pet_uid || '---'}</p>
                 <p class="history-sub">Dueño: ${pet.dueno_nombre}</p>
@@ -719,6 +751,67 @@
     function showMoreVetHistory() {
         vetLimit += 5;
         renderVetHistory();
+    }
+
+    function renderOwnerView(pets) {
+        const container = document.getElementById('owner-pets-list');
+        container.innerHTML = '';
+        if (!pets || pets.length === 0) {
+            container.innerHTML = '<p style="text-align: center; color: var(--text-muted);">No tienes mascotas registradas.</p>';
+        } else {
+            pets.forEach(pet => {
+                const isLost = pet.esta_perdida === true;
+                const btnColor = isLost ? 'var(--success)' : 'var(--danger)';
+                const btnText = isLost ? '✅ Reportar Mascota Encontrada' : '🚨 Reportar Mascota Perdida';
+                
+                const el = document.createElement('div');
+                el.className = 'history-card';
+                if (isLost) el.style.borderColor = 'var(--danger)';
+                el.innerHTML = `
+                    ${isLost ? '<div style="background: var(--danger); color: white; padding: 8px; border-radius: 8px; margin-bottom: 15px; text-align: center; font-weight: bold;">⚠️ Mascota Reportada como Perdida</div>' : ''}
+                    <div style="display: flex; gap: 15px; align-items: center; margin-bottom: 15px;">
+                        <img src="${pet.foto_url || 'https://img.freepik.com/vector-premium/lindo-perro-dibujos-animados-huella-pata-avatar-mascota_611849-14.jpg'}" style="width: 70px; height: 70px; border-radius: 50%; object-fit: cover; border: 2px solid var(--primary);">
+                        <div>
+                            <h4 class="history-title" style="font-size: 1.3rem;">${pet.nombre}</h4>
+                            <p class="history-sub">${pet.especie} (${pet.raza})</p>
+                        </div>
+                    </div>
+                    <button class="btn" style="background: ${btnColor}; color: white; padding: 12px; font-size: 0.9rem;" onclick="toggleLostStatus('${pet.id}', ${isLost}, 'owner')">
+                        ${btnText}
+                    </button>
+                `;
+                container.appendChild(el);
+            });
+        }
+        switchView('owner');
+    }
+
+    async function toggleLostStatus(petId, isCurrentlyLost, viewType) {
+        const actionText = isCurrentlyLost ? "marcar como ENCONTRADA" : "reportar como PERDIDA";
+        if (!confirm(`¿Estás seguro que deseas ${actionText} a esta mascota?`)) return;
+        
+        showMsg(viewType, 'info', 'Actualizando estado...');
+        try {
+            const res = await fetch(`${BASE_URL}/pt-toggle-lost`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ pet_id: petId, esta_perdida: !isCurrentlyLost })
+            });
+            let result = await res.json();
+            if (Array.isArray(result) && result.length > 0) result = result[0];
+            
+            if (result && result.status === 'success') {
+                showMsg(viewType, 'success', 'Estado actualizado correctamente.');
+                soundOk();
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showMsg(viewType, 'error', 'Error al actualizar el estado.');
+                soundError();
+            }
+        } catch(e) {
+            showMsg(viewType, 'error', 'Fallo de red al actualizar estado.');
+            soundError();
+        }
     }
 
     function renderSuperHistory() {
