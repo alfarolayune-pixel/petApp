@@ -764,23 +764,51 @@
                 const btnColor = isLost ? 'var(--success)' : 'var(--danger)';
                 const btnText = isLost ? '✅ Reportar Mascota Encontrada' : '🚨 Reportar Mascota Perdida';
                 
-                const el = document.createElement('div');
-                el.className = 'history-card';
-                if (isLost) el.style.borderColor = 'var(--danger)';
-                el.innerHTML = `
-                    ${isLost ? '<div style="background: var(--danger); color: white; padding: 8px; border-radius: 8px; margin-bottom: 15px; text-align: center; font-weight: bold;">⚠️ Mascota Reportada como Perdida</div>' : ''}
-                    <div style="display: flex; gap: 15px; align-items: center; margin-bottom: 15px;">
-                        <img src="${pet.foto_url || 'https://img.freepik.com/vector-premium/lindo-perro-dibujos-animados-huella-pata-avatar-mascota_611849-14.jpg'}" style="width: 70px; height: 70px; border-radius: 50%; object-fit: cover; border: 2px solid var(--primary);">
-                        <div>
-                            <h4 class="history-title" style="font-size: 1.3rem;">${pet.nombre}</h4>
-                            <p class="history-sub">${pet.especie} (${pet.raza})</p>
-                        </div>
+                const cardHTML = `
+                <div class="pet-card" style="margin-bottom: 25px;">
+                    ${isLost ? '<div style="background: var(--danger); color: white; padding: 10px; border-radius: 12px; margin-bottom: 20px; text-align: center; font-weight: 800; font-size: 1rem; animation: pulse 1.5s infinite;">🚨 MASCOTA REPORTADA COMO PERDIDA 🚨</div>' : ''}
+                    
+                    <div class="pet-photo-container">
+                        <img src="${pet.foto_url || 'https://img.freepik.com/vector-premium/lindo-perro-dibujos-animados-huella-pata-avatar-mascota_611849-14.jpg'}" class="pet-photo" alt="Foto">
                     </div>
-                    <button class="btn" style="background: ${btnColor}; color: white; padding: 12px; font-size: 0.9rem;" onclick="toggleLostStatus('${pet.id}', ${isLost}, 'owner')">
+                    <div class="pet-name">${pet.nombre}</div>
+                    <div class="badge-row">
+                        <span class="badge">Especie: ${pet.especie || 'N/A'}</span>
+                        <span class="badge">Raza: ${pet.raza || 'N/A'}</span>
+                    </div>
+
+                    <div class="info-panel">
+                        <div class="info-label">🚨 Temperamento</div>
+                        <div class="info-text">${pet.temperamento || '---'}</div>
+                    </div>
+                    
+                    <div class="info-panel" style="border-left-color: var(--success);">
+                        <div class="info-label">💉 Estado de Vacunación</div>
+                        <div class="info-text">${pet.estado_vacunacion || '---'}</div>
+                    </div>
+
+                    <div class="info-panel" style="border-left-color: var(--warning);">
+                        <div class="info-label">🎂 Edad</div>
+                        <div class="info-text">${pet.edad || '---'}</div>
+                    </div>
+
+                    <div class="info-panel" style="border-left-color: var(--danger);">
+                        <div class="info-label">🏥 Condición Médica</div>
+                        <div class="info-text">${pet.condiciones_medicas || '---'}</div>
+                    </div>
+
+                    <button class="btn" style="background: ${btnColor}; color: white; margin-top: 20px; width: 100%; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3);" onclick="toggleLostStatus('${pet.id}', ${isLost}, 'owner')">
                         ${btnText}
                     </button>
+                    
+                    <div class="vet-footer">
+                        <div class="info-label">Registrado en:</div>
+                        <h4>${pet.vet_nombre || 'Desconocido'}</h4>
+                        <div style="font-weight: 600;">Tel: ${pet.vet_tel || '---'}</div>
+                    </div>
+                </div>
                 `;
-                container.appendChild(el);
+                container.innerHTML += cardHTML;
             });
         }
         switchView('owner');
