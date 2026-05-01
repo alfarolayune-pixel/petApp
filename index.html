@@ -240,13 +240,16 @@
                 <div id="pub-med" class="info-text">---</div>
             </div>
 
-            <div style="display: flex; gap: 15px; margin-top: 20px;">
+            <div id="pub-contact-container" style="display: flex; gap: 15px; margin-top: 20px;">
                 <button class="btn" id="btn-call" style="background: var(--primary); color: #134e4a; flex: 1; padding: 15px 10px; font-size: 0.9rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3);">
                     📞 Llamar
                 </button>
                 <button class="btn" id="btn-whatsapp" style="background: #25D366; color: white; flex: 1; padding: 15px 10px; font-size: 0.9rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3);">
                     💬 WhatsApp
                 </button>
+            </div>
+            <div id="pub-privacy-msg" style="display: none; background: rgba(0,0,0,0.2); border: 1px solid #334155; padding: 15px; border-radius: 16px; margin-top: 20px; text-align: center; font-size: 0.85rem; color: var(--text-muted);">
+                🔒 Los datos de contacto del dueño se mantienen privados por seguridad hasta que la mascota sea reportada como perdida.
             </div>
 
             <div class="vet-footer">
@@ -272,6 +275,10 @@
             <button class="btn btn-outline" id="btn-scan-dueno" onclick="scanDuenoUid()" style="padding: 12px; font-size: 0.85rem;">
                 🔗 Vincular PeTApp Dueño (Opcional)
             </button>
+            <div style="margin-top: 15px; margin-bottom: 5px; display: flex; align-items: center; gap: 10px; background: rgba(0,0,0,0.2); padding: 12px; border-radius: 12px; border: 1px solid #334155;">
+                <input type="checkbox" id="reg-d-contacto-siempre" checked style="width: 20px; height: 20px; margin: 0; padding: 0;">
+                <label for="reg-d-contacto-siempre" style="margin: 0; font-size: 0.85rem; text-transform: none; font-weight: normal; color: #e2e8f0; line-height: 1.3;">Mostrar botones de Llamar/WhatsApp de forma pública (incluso si la mascota no está perdida)</label>
+            </div>
             <input type="hidden" id="reg-d-uid" value="">
         </div>
 
@@ -564,6 +571,14 @@
         document.getElementById('btn-whatsapp').onclick = () => window.open(waLink, '_blank');
         document.getElementById('btn-call').onclick = () => window.location.href = `tel:${pet.dueno_tel}`;
         
+        if (pet.esta_perdida || pet.contacto_siempre !== false) {
+            document.getElementById('pub-contact-container').style.display = 'flex';
+            document.getElementById('pub-privacy-msg').style.display = 'none';
+        } else {
+            document.getElementById('pub-contact-container').style.display = 'none';
+            document.getElementById('pub-privacy-msg').style.display = 'block';
+        }
+        
         switchView('public');
     }
 
@@ -630,6 +645,7 @@
             estado_vacunacion: document.getElementById('reg-p-vacunacion').value,
             condiciones: document.getElementById('reg-p-med').value,
             temperamento: document.getElementById('reg-p-temp').value,
+            contacto_siempre: document.getElementById('reg-d-contacto-siempre').checked,
             foto_url: fotoBase64 // Se envía en base64 u otra estrategia en backend
         };
 
