@@ -178,6 +178,15 @@
         .history-actions { position: absolute; right: 15px; top: 15px; display: flex; gap: 10px; }
         .action-btn { background: none; border: none; font-size: 1.1rem; cursor: pointer; opacity: 0.7; transition: opacity 0.2s; padding: 0; }
         .action-btn:hover { opacity: 1; transform: scale(1.1); }
+        
+        /* --- Carousel --- */
+        .carousel-wrapper { margin-top: 25px; position: relative; }
+        .carousel-container { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scroll-behavior: smooth; -webkit-overflow-scrolling: touch; gap: 15px; padding-bottom: 10px; }
+        .carousel-container::-webkit-scrollbar { display: none; }
+        .carousel-slide { flex: 0 0 100%; scroll-snap-align: center; }
+        .carousel-dots { display: flex; justify-content: center; gap: 8px; margin-top: 5px; }
+        .dot { width: 10px; height: 10px; border-radius: 50%; background: #334155; transition: all 0.3s ease; }
+        .dot.active { background: var(--primary); transform: scale(1.2); }
     </style>
 </head>
 <body>
@@ -240,23 +249,76 @@
                 <div id="pub-med" class="info-text">---</div>
             </div>
 
-            <div id="pub-contact-container" style="display: flex; gap: 15px; margin-top: 20px;">
-                <button class="btn" id="btn-call" style="background: var(--primary); color: #134e4a; flex: 1; padding: 15px 10px; font-size: 0.9rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3);">
-                    📞 Llamar
-                </button>
-                <button class="btn" id="btn-whatsapp" style="background: #25D366; color: white; flex: 1; padding: 15px 10px; font-size: 0.9rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3);">
-                    💬 WhatsApp
-                </button>
-            </div>
-            <div id="pub-privacy-msg" style="display: none; background: rgba(0,0,0,0.2); border: 1px solid #334155; padding: 15px; border-radius: 16px; margin-top: 20px; text-align: center; font-size: 0.85rem; color: var(--text-muted);">
-                🔒 Los datos de contacto del dueño se mantienen privados por seguridad hasta que la mascota sea reportada como perdida.
+            <!-- CLASSIC VIEW (NO PERDIDA) -->
+            <div id="pub-classic-view">
+                <div id="pub-contact-container" style="display: flex; gap: 15px; margin-top: 20px;">
+                    <button class="btn" id="btn-call" style="background: var(--primary); color: #134e4a; flex: 1; padding: 15px 10px; font-size: 0.9rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3);">
+                        📞 Llamar
+                    </button>
+                    <button class="btn" id="btn-whatsapp" style="background: #25D366; color: white; flex: 1; padding: 15px 10px; font-size: 0.9rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3);">
+                        💬 WhatsApp
+                    </button>
+                </div>
+                <div id="pub-privacy-msg" style="display: none; background: rgba(0,0,0,0.2); border: 1px solid #334155; padding: 15px; border-radius: 16px; margin-top: 20px; text-align: center; font-size: 0.85rem; color: var(--text-muted);">
+                    🔒 Los datos de contacto del dueño se mantienen privados por seguridad hasta que la mascota sea reportada como perdida.
+                </div>
+
+                <div class="vet-footer">
+                    <div class="info-label">Registrado en:</div>
+                    <h4 id="pub-vet-name">Veterinaria...</h4>
+                    <div id="pub-vet-tel" style="font-weight: 600;">Tel: ---</div>
+                    <div id="pub-vet-dir" style="font-size: 0.85rem; color: var(--text-muted);">Dirección...</div>
+                </div>
             </div>
 
-            <div class="vet-footer">
-                <div class="info-label">Registrado en:</div>
-                <h4 id="pub-vet-name">Veterinaria...</h4>
-                <div id="pub-vet-tel" style="font-weight: 600;">Tel: ---</div>
-                <div id="pub-vet-dir" style="font-size: 0.85rem; color: var(--text-muted);">Dirección...</div>
+            <!-- CAROUSEL VIEW (PERDIDA) -->
+            <div id="pub-carousel-view" class="carousel-wrapper" style="display: none;">
+                <div class="carousel-container" id="pub-carousel-scroll" onscroll="updateCarouselDots()">
+                    
+                    <div class="carousel-slide">
+                        <div style="background: rgba(244, 63, 94, 0.1); border: 2px solid var(--danger); border-radius: 16px; padding: 25px 20px; text-align: center; height: 100%; display: flex; flex-direction: column; justify-content: center; box-shadow: 0 10px 25px rgba(244, 63, 94, 0.15);">
+                            <h3 style="color: var(--danger); margin-top: 0; font-size: 1.4rem;">¡Contactar al Dueño!</h3>
+                            <p style="color: #e2e8f0; font-size: 1.1rem; margin-bottom: 25px;">Dueño: <strong id="pub-dueno-name-carousel">---</strong></p>
+                            <div style="display: flex; flex-direction: column; gap: 15px;">
+                                <button class="btn" id="btn-call-carousel" style="background: var(--primary); color: #134e4a; padding: 15px 10px; font-size: 1.1rem; font-weight: bold; box-shadow: 0 8px 15px rgba(0,0,0,0.4);">
+                                    📞 Llamar Directo
+                                </button>
+                                <button class="btn" id="btn-whatsapp-carousel" style="background: #25D366; color: white; padding: 15px 10px; font-size: 1.1rem; font-weight: bold; box-shadow: 0 8px 15px rgba(0,0,0,0.4);">
+                                    💬 Enviar WhatsApp
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="carousel-slide">
+                        <div style="background: rgba(56, 189, 248, 0.1); border: 2px solid #38bdf8; border-radius: 16px; padding: 25px 20px; text-align: center; height: 100%; display: flex; flex-direction: column; justify-content: center;">
+                            <h3 style="color: #38bdf8; margin-top: 0; font-size: 1.4rem;">Clínica Veterinaria</h3>
+                            <p style="color: #cbd5e1; font-size: 0.95rem; margin-bottom: 25px;">Lugar donde se registró la mascota.</p>
+                            <h4 id="pub-vet-name-carousel" style="margin-bottom: 5px; font-size: 1.2rem; color: #fff;">Veterinaria...</h4>
+                            <div id="pub-vet-dir-carousel" style="font-size: 0.95rem; color: var(--text-muted); margin-bottom: 25px;">Dirección...</div>
+                            <button class="btn" id="btn-vet-call-carousel" style="background: #38bdf8; color: #0f172a; font-weight: bold; font-size: 1.1rem; padding: 15px 10px;">
+                                📞 Llamar a la Clínica
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="carousel-slide">
+                        <div style="background: rgba(250, 204, 21, 0.1); border: 2px solid var(--warning); border-radius: 16px; padding: 25px 20px; text-align: center; height: 100%; display: flex; flex-direction: column; justify-content: center;">
+                            <h3 style="color: var(--warning); margin-top: 0; font-size: 1.4rem;">Urgencia Médica</h3>
+                            <p style="color: #cbd5e1; font-size: 0.95rem; margin-bottom: 25px;">Encuentra atención veterinaria cercana rápidamente usando tu GPS.</p>
+                            <button class="btn" onclick="window.open('https://www.google.com/maps/search/veterinaria', '_blank')" style="background: var(--warning); color: #422006; font-weight: bold; padding: 20px 10px; font-size: 1.1rem; box-shadow: 0 8px 15px rgba(250, 204, 21, 0.3);">
+                                📍 Abrir Google Maps
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+                
+                <div class="carousel-dots" id="pub-carousel-dots">
+                    <span class="dot active"></span>
+                    <span class="dot"></span>
+                    <span class="dot"></span>
+                </div>
             </div>
         </div>
         <button class="btn btn-outline" onclick="window.location.href = window.location.pathname" style="margin-top: 25px;">Nueva Lectura</button>
@@ -490,6 +552,19 @@
         await processAuth(uid);
     }
 
+    function updateCarouselDots() {
+        const container = document.getElementById('pub-carousel-scroll');
+        if(!container) return;
+        const scrollLeft = container.scrollLeft;
+        const slideWidth = container.clientWidth;
+        const activeIndex = Math.round(scrollLeft / slideWidth);
+        const dots = document.querySelectorAll('#pub-carousel-dots .dot');
+        dots.forEach((dot, idx) => {
+            if(idx === activeIndex) dot.classList.add('active');
+            else dot.classList.remove('active');
+        });
+    }
+
     window.onload = () => {
         const urlParams = new URLSearchParams(window.location.search);
         const externalUid = urlParams.get('uid');
@@ -550,11 +625,6 @@
     }
 
     function renderPublicPet(pet) {
-        if (pet.esta_perdida) {
-            document.getElementById('pub-alert-lost').style.display = 'block';
-        } else {
-            document.getElementById('pub-alert-lost').style.display = 'none';
-        }
         document.getElementById('pub-foto').src = pet.foto_url || "https://img.freepik.com/vector-premium/lindo-perro-dibujos-animados-huella-pata-avatar-mascota_611849-14.jpg";
         document.getElementById('pub-name').innerText = pet.nombre;
         document.getElementById('pub-especie').innerText = 'Especie: ' + (pet.especie || 'N/A');
@@ -563,20 +633,50 @@
         document.getElementById('pub-med').innerText = pet.condiciones_medicas || '---';
         document.getElementById('pub-vacunacion').innerText = pet.estado_vacunacion || '---';
         document.getElementById('pub-edad').innerText = pet.edad || '---';
-        document.getElementById('pub-vet-name').innerText = pet.vet_nombre || 'Desconocido';
-        document.getElementById('pub-vet-tel').innerText = 'Tel: ' + (pet.vet_tel || '---');
-        document.getElementById('pub-vet-dir').innerText = pet.vet_direccion || 'Consulta con la veterinaria.';
         
         const waLink = `https://wa.me/${pet.dueno_tel}?text=Hola,%20encontré%20a%20tu%20mascota%20${pet.nombre}%20mediante%20su%20PeTApp`;
-        document.getElementById('btn-whatsapp').onclick = () => window.open(waLink, '_blank');
-        document.getElementById('btn-call').onclick = () => window.location.href = `tel:${pet.dueno_tel}`;
-        
-        if (pet.esta_perdida || pet.contacto_siempre !== false) {
-            document.getElementById('pub-contact-container').style.display = 'flex';
-            document.getElementById('pub-privacy-msg').style.display = 'none';
+
+        if (pet.esta_perdida) {
+            document.getElementById('pub-alert-lost').style.display = 'block';
+            document.getElementById('pub-classic-view').style.display = 'none';
+            document.getElementById('pub-carousel-view').style.display = 'block';
+            
+            document.getElementById('pub-dueno-name-carousel').innerText = pet.dueno_nombre || 'El Dueño';
+            document.getElementById('pub-vet-name-carousel').innerText = pet.vet_nombre || 'Desconocido';
+            document.getElementById('pub-vet-dir-carousel').innerText = pet.vet_direccion || 'Consulta con la veterinaria.';
+            
+            document.getElementById('btn-whatsapp-carousel').onclick = () => window.open(waLink, '_blank');
+            document.getElementById('btn-call-carousel').onclick = () => window.location.href = `tel:${pet.dueno_tel}`;
+            if(pet.vet_tel) {
+                document.getElementById('btn-vet-call-carousel').onclick = () => window.location.href = `tel:${pet.vet_tel}`;
+                document.getElementById('btn-vet-call-carousel').style.display = 'block';
+            } else {
+                document.getElementById('btn-vet-call-carousel').style.display = 'none';
+            }
+            
+            const container = document.getElementById('pub-carousel-scroll');
+            if(container) {
+                container.scrollLeft = 0;
+                updateCarouselDots();
+            }
         } else {
-            document.getElementById('pub-contact-container').style.display = 'none';
-            document.getElementById('pub-privacy-msg').style.display = 'block';
+            document.getElementById('pub-alert-lost').style.display = 'none';
+            document.getElementById('pub-classic-view').style.display = 'block';
+            document.getElementById('pub-carousel-view').style.display = 'none';
+            
+            document.getElementById('pub-vet-name').innerText = pet.vet_nombre || 'Desconocido';
+            document.getElementById('pub-vet-tel').innerText = 'Tel: ' + (pet.vet_tel || '---');
+            document.getElementById('pub-vet-dir').innerText = pet.vet_direccion || 'Consulta con la veterinaria.';
+            document.getElementById('btn-whatsapp').onclick = () => window.open(waLink, '_blank');
+            document.getElementById('btn-call').onclick = () => window.location.href = `tel:${pet.dueno_tel}`;
+            
+            if (pet.contacto_siempre !== false) {
+                document.getElementById('pub-contact-container').style.display = 'flex';
+                document.getElementById('pub-privacy-msg').style.display = 'none';
+            } else {
+                document.getElementById('pub-contact-container').style.display = 'none';
+                document.getElementById('pub-privacy-msg').style.display = 'block';
+            }
         }
         
         switchView('public');
