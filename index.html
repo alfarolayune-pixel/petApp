@@ -185,7 +185,7 @@
 <div class="app-container">
     <div class="branding">
         <button id="btn-logout" class="logout-btn" onclick="window.location.href = window.location.pathname">Cerrar Sesión</button>
-        <img src="Logo_TechTap.jpeg" alt="Logo TechTap" style="max-height: 140px; max-width: 90%; margin-top: 5px; object-fit: contain; filter: drop-shadow(0 4px 10px rgba(0,0,0,0.5));">
+        <img src="PeTApp_Logo.jpeg" alt="PeTApp Logo" style="max-height: 140px; max-width: 90%; margin-top: 5px; object-fit: contain; filter: drop-shadow(0 4px 10px rgba(0,0,0,0.5));">
     </div>
 
     <!-- VIEW: SCAN / HOME -->
@@ -380,7 +380,7 @@
 <!-- Developer Footer -->
 <div style="text-align: center; margin-top: 30px; margin-bottom: 20px;">
     <span style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">Powered by</span><br>
-    <img src="Logo_TechTap.jpeg" alt="TechTap Logo" style="max-height: 45px; border-radius: 6px; margin-top: 10px; opacity: 0.9;">
+    <img src="Logo_TechTap.jpeg" alt="TechTap Logo" style="max-height: 140px; max-width: 95%; object-fit: contain; border-radius: 12px; margin-top: 15px; opacity: 1; filter: drop-shadow(0 6px 12px rgba(0,0,0,0.5));">
 </div>
 
 <script>
@@ -469,11 +469,11 @@
             } else if (data && (data.role === 'PET' || data.especie)) {
                 renderPublicPet(data.full_data || data);
             } else {
-                showMsg('main', 'error', 'PeTApp no reconocido o sin registro.');
+                showMsg('main', 'error', 'Este PeTApp no está registrado en el sistema.');
                 soundError();
             }
         } catch (e) {
-            showMsg('main', 'error', 'Fallo de conexión al servidor al verificar identidad.');
+            showMsg('main', 'error', 'Fallo de conexión al servidor al intentar leer el PeTApp. Verifica tu internet e intenta de nuevo.');
             soundError();
         }
     }
@@ -485,7 +485,7 @@
         const uid = await getNfcUid();
         document.getElementById('main-scan-btn').classList.remove('scanning-pulse');
         
-        if (!uid) { showMsg('main', 'error', 'No se detectó PeTApp.'); return; }
+        if (!uid) { showMsg('main', 'error', 'No se detectó ningún dispositivo PeTApp. Por favor, acércalo nuevamente.'); return; }
         
         await processAuth(uid);
     }
@@ -606,7 +606,7 @@
         showMsg('vet', 'info', 'Verificando disponibilidad...');
         const isDuplicate = await checkDuplicateBracelet(uid);
         if (isDuplicate) {
-            showMsg('vet', 'error', 'Este PeTApp ya está en uso. Usa uno nuevo.');
+            showMsg('vet', 'error', 'Este PeTApp ya está asignado a otro dueño o mascota. Usa uno nuevo.');
             soundError();
             document.getElementById('reg-d-uid').value = '';
             document.getElementById('btn-scan-dueno').innerText = '🔗 Vincular PeTApp Dueño (Opcional)';
@@ -684,11 +684,11 @@
                 soundOk();
                 setTimeout(() => window.location.href = window.location.pathname, 3000);
             } else {
-                showMsg('vet', 'error', 'Error en base de datos al guardar mascota. Inténtalo otra vez.');
+                showMsg('vet', 'error', 'No se pudo registrar la mascota en la base de datos debido a un error interno. Intenta de nuevo.');
                 soundError();
             }
         } catch (e) {
-            showMsg('vet', 'error', 'Fallo de conexión al enviar el registro.');
+            showMsg('vet', 'error', 'No hay conexión a internet para procesar el registro de la mascota. Revisa tu red.');
             soundError();
         }
     }
@@ -734,11 +734,11 @@
                 soundOk();
                 setTimeout(() => window.location.href = window.location.pathname, 3000);
             } else {
-                showMsg('super', 'error', 'Error interno al registrar la clínica en base de datos.');
+                showMsg('super', 'error', 'No se pudo guardar la clínica en la base de datos debido a un error interno del servidor.');
                 soundError();
             }
         } catch (e) { 
-            showMsg('super', 'error', 'Fallo de conexión al enviar registro de clínica.'); 
+            showMsg('super', 'error', 'Problema de red al intentar registrar la clínica. Verifica tu conexión a internet.'); 
             soundError();
         }
     }
@@ -858,11 +858,11 @@
                 soundOk();
                 setTimeout(() => window.location.href = window.location.pathname, 1500);
             } else {
-                showMsg(viewType, 'error', 'Error al actualizar el estado.');
+                showMsg(viewType, 'error', 'No se pudo cambiar el estado de pérdida de la mascota. Intenta de nuevo.');
                 soundError();
             }
         } catch(e) {
-            showMsg(viewType, 'error', 'Fallo de red al actualizar estado.');
+            showMsg(viewType, 'error', 'Fallo de red al intentar actualizar el estado de la mascota. Verifica tu conexión.');
             soundError();
         }
     }
@@ -924,11 +924,11 @@
                     renderSuperHistory();
                 }
             } else {
-                showMsg('super', 'error', 'Error al actualizar.');
+                showMsg('super', 'error', 'Ocurrió un error interno al intentar actualizar los datos de la veterinaria en la base de datos.');
                 soundError();
             }
         } catch (e) {
-            showMsg('super', 'error', 'Fallo de conexión.');
+            showMsg('super', 'error', 'Error de red al intentar actualizar los datos de la veterinaria. Revisa tu internet.');
             soundError();
         }
     }
@@ -951,11 +951,11 @@
                 superHistory = superHistory.filter(v => v.id !== id);
                 renderSuperHistory();
             } else {
-                showMsg('super', 'error', 'Error al eliminar. Podría tener mascotas asociadas.');
+                showMsg('super', 'error', 'No se puede eliminar la clínica porque ya tiene mascotas registradas y asociadas a ella.');
                 soundError();
             }
         } catch (e) {
-            showMsg('super', 'error', 'Fallo de conexión.');
+            showMsg('super', 'error', 'Error de conexión al intentar eliminar la clínica. Verifica tu red.');
             soundError();
         }
     }
