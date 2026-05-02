@@ -462,6 +462,10 @@
             <label>Dirección Física</label>
             <input type="text" id="sup-dir" placeholder="Calle, Número, Ciudad">
         </div>
+        <div class="form-group">
+            <label>PIN de Acceso</label>
+            <input type="text" id="sup-pin" placeholder="4 dígitos (Ej: 1234)" maxlength="4" style="text-align: center; letter-spacing: 10px; font-weight: bold; font-size: 1.2rem;">
+        </div>
 
         <button class="btn btn-secondary" onclick="submitVetRegistration()">
             🏪 Activar Clínica (Escanear NFC)
@@ -1009,10 +1013,14 @@
     }
 
     async function submitVetRegistration() {
+        let pinVal = document.getElementById('sup-pin').value;
+        if (!pinVal || pinVal.length < 4) pinVal = '1234';
+
         const payload = {
             nombre: document.getElementById('sup-name').value,
             telefono: document.getElementById('sup-tel').value,
-            direccion: document.getElementById('sup-dir').value
+            direccion: document.getElementById('sup-dir').value,
+            pin_seguridad: pinVal
         };
 
         if (!payload.nombre) { 
