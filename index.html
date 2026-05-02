@@ -187,6 +187,27 @@
         .carousel-dots { display: flex; justify-content: center; gap: 8px; margin-top: 5px; }
         .dot { width: 10px; height: 10px; border-radius: 50%; background: #334155; transition: all 0.3s ease; }
         .dot.active { background: var(--primary); transform: scale(1.2); }
+
+        /* --- Modals --- */
+        .modal-backdrop {
+            display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0, 0, 0, 0.8); z-index: 1000; align-items: center; justify-content: center;
+            backdrop-filter: blur(5px);
+        }
+        .modal-content {
+            background: var(--bg-card); width: 90%; max-width: 440px; max-height: 90vh;
+            border-radius: 24px; padding: 25px; position: relative; overflow-y: auto;
+            border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
+            animation: slideUp 0.3s ease-out;
+        }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(40px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .modal-close {
+            position: absolute; top: 15px; right: 15px; background: none; border: none;
+            color: var(--text-muted); font-size: 1.5rem; cursor: pointer;
+        }
     </style>
 </head>
 <body>
@@ -439,6 +460,90 @@
     </div>
 </div>
 
+<!-- Modal: Editar Veterinaria -->
+<div id="modal-edit-vet" class="modal-backdrop">
+    <div class="modal-content">
+        <button class="modal-close" onclick="closeModal('modal-edit-vet')">×</button>
+        <h3 style="margin-top: 0; color: var(--secondary); margin-bottom: 5px;">Editar Clínica</h3>
+        <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 20px;">Actualiza los datos de contacto.</p>
+        
+        <input type="hidden" id="edit-vet-id">
+        <div class="form-group">
+            <label>Nombre de la Clínica</label>
+            <input type="text" id="edit-vet-nombre">
+        </div>
+        <div class="form-group">
+            <label>Teléfono</label>
+            <input type="tel" id="edit-vet-tel">
+        </div>
+        <div class="form-group">
+            <label>Dirección</label>
+            <input type="text" id="edit-vet-dir">
+        </div>
+        <button class="btn btn-secondary" onclick="submitEditVetModal()">💾 Guardar Cambios</button>
+        <div id="status-modal-vet" class="status-msg"></div>
+    </div>
+</div>
+
+<!-- Modal: Editar Mascota -->
+<div id="modal-edit-pet" class="modal-backdrop">
+    <div class="modal-content">
+        <button class="modal-close" onclick="closeModal('modal-edit-pet')">×</button>
+        <h3 style="margin-top: 0; color: var(--primary); margin-bottom: 5px;">Editar Mascota</h3>
+        
+        <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 12px; margin-bottom: 20px; text-align: center;">
+            <div id="edit-pet-display-name" style="font-size: 1.4rem; font-weight: 800; color: white;">---</div>
+            <div id="edit-pet-display-info" style="font-size: 0.85rem; color: var(--text-muted);">---</div>
+        </div>
+
+        <input type="hidden" id="edit-pet-id">
+        <input type="hidden" id="edit-pet-view-source"> <!-- 'vet' or 'owner' -->
+
+        <label style="color: var(--primary);">📷 Fotografía (Opcional)</label>
+        <div style="display: flex; gap: 10px; justify-content: center; margin-bottom: 15px;">
+            <input type="file" id="edit-p-foto" accept="image/*" capture="environment" style="display: none;" onchange="previewEditFoto(event)">
+            <label for="edit-p-foto" class="btn btn-outline" style="margin: 0; flex: 1; padding: 10px; font-size: 0.85rem;">📸 Tomar</label>
+            
+            <input type="file" id="edit-p-foto-upload" accept="image/*" style="display: none;" onchange="previewEditFoto(event)">
+            <label for="edit-p-foto-upload" class="btn btn-outline" style="margin: 0; flex: 1; padding: 10px; font-size: 0.85rem;">🖼️ Subir</label>
+        </div>
+        <img id="edit-foto-preview" src="" style="max-width: 120px; max-height: 120px; object-fit: cover; border-radius: 12px; display: none; border: 2px solid var(--primary); margin: 0 auto 20px;">
+
+        <div class="form-group">
+            <label>📞 Teléfono del Dueño</label>
+            <input type="tel" id="edit-pet-tel">
+        </div>
+        <div class="form-group">
+            <label>🏠 Dirección del Dueño</label>
+            <input type="text" id="edit-pet-dir">
+        </div>
+        <div style="margin-bottom: 20px; display: flex; align-items: center; gap: 10px; background: rgba(0,0,0,0.2); padding: 12px; border-radius: 12px; border: 1px solid #334155;">
+            <input type="checkbox" id="edit-pet-contacto-siempre" style="width: 20px; height: 20px; margin: 0; padding: 0;">
+            <label for="edit-pet-contacto-siempre" style="margin: 0; font-size: 0.85rem; text-transform: none; font-weight: normal; color: #e2e8f0; line-height: 1.3;">Mostrar botones de Llamar/WhatsApp de forma pública siempre</label>
+        </div>
+
+        <div class="form-group">
+            <label>💉 Estado de Vacunación</label>
+            <input type="text" id="edit-pet-vacunacion">
+        </div>
+        <div class="form-group">
+            <label>🏥 Condiciones médicas / Alergias</label>
+            <textarea id="edit-pet-med" style="height: 60px;"></textarea>
+        </div>
+        <div class="form-group">
+            <label>🚨 Temperamento</label>
+            <select id="edit-pet-temp">
+                <option value="Dócil y cariñoso">Dócil y cariñoso</option>
+                <option value="Nervioso / Tímido">Nervioso / Tímido</option>
+                <option value="Agresivo con desconocidos">Agresivo con desconocidos</option>
+            </select>
+        </div>
+
+        <button class="btn btn-primary" onclick="submitEditPetModal()">💾 Guardar Cambios</button>
+        <div id="status-modal-pet" class="status-msg"></div>
+    </div>
+</div>
+
 <!-- Developer Footer -->
 <div style="text-align: center; margin-top: 30px; margin-bottom: 20px;">
     <span style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">Powered by</span><br>
@@ -622,6 +727,42 @@
             textEdad = meses + ' meses';
         }
         document.getElementById('reg-p-edad').value = textEdad;
+    }
+
+    // Modal Logic
+    function openModal(id) {
+        document.getElementById(id).style.display = 'flex';
+    }
+    function closeModal(id) {
+        document.getElementById(id).style.display = 'none';
+        const statusEls = document.querySelectorAll('#' + id + ' .status-msg');
+        statusEls.forEach(el => el.style.display = 'none');
+    }
+
+    let editFotoBase64 = "";
+    function previewEditFoto(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const maxW = 400; const maxH = 400;
+                let w = img.width; let h = img.height;
+                if (w > h && w > maxW) { h *= maxW / w; w = maxW; }
+                else if (h > maxH) { w *= maxH / h; h = maxH; }
+                canvas.width = w; canvas.height = h;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, w, h);
+                editFotoBase64 = canvas.toDataURL('image/jpeg', 0.8);
+                const prev = document.getElementById('edit-foto-preview');
+                prev.src = editFotoBase64;
+                prev.style.display = 'block';
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
     }
 
     function renderPublicPet(pet) {
@@ -854,12 +995,16 @@
             const btnColor = isLost ? 'var(--success)' : 'var(--danger)';
             const btnText = isLost ? 'Mascota Encontrada' : 'Reportar Perdida';
             
+            // Convert to base64 string to pass safely via onclick
+            const safePetStr = encodeURIComponent(JSON.stringify(pet));
+
             const el = document.createElement('div');
             el.className = 'history-card';
             if (isLost) el.style.borderColor = 'var(--danger)';
             el.innerHTML = `
                 ${isLost ? '<div style="color: var(--danger); font-size: 0.8rem; font-weight: bold; margin-bottom: 5px;">⚠️ REPORTADA COMO PERDIDA</div>' : ''}
                 <div class="history-actions">
+                    <button class="action-btn" title="Editar" onclick="openEditPet('${safePetStr}', 'vet')">✏️</button>
                     <button class="action-btn" title="${btnText}" style="color: ${btnColor}; opacity: 1;" onclick="toggleLostStatus('${pet.id}', ${isLost}, 'vet')">🚨</button>
                 </div>
                 <h4 class="history-title">${pet.pet_nombre} <span style="font-size:0.8rem; font-weight:normal; color:var(--primary);">- ${pet.especie} (${pet.raza})</span></h4>
@@ -889,14 +1034,20 @@
                 const btnColor = isLost ? 'var(--success)' : 'var(--danger)';
                 const btnText = isLost ? '✅ Reportar Mascota Encontrada' : '🚨 Reportar Mascota Perdida';
                 
+                const safePetStr = encodeURIComponent(JSON.stringify(pet));
+
                 const cardHTML = `
                 <div class="pet-card" style="margin-bottom: 25px;">
                     ${isLost ? '<div style="background: var(--danger); color: white; padding: 10px; border-radius: 12px; margin-bottom: 20px; text-align: center; font-weight: 800; font-size: 1rem; animation: pulse 1.5s infinite;">🚨 MASCOTA REPORTADA COMO PERDIDA 🚨</div>' : ''}
                     
+                    <div style="position: absolute; top: 15px; right: 15px; z-index: 10;">
+                        <button class="btn btn-outline" style="padding: 10px; border-radius: 50%; width: 45px; height: 45px; background: rgba(0,0,0,0.5);" title="Editar Mascota" onclick="openEditPet('${safePetStr}', 'owner')">✏️</button>
+                    </div>
+
                     <div class="pet-photo-container">
                         <img src="${pet.foto_url || 'https://img.freepik.com/vector-premium/lindo-perro-dibujos-animados-huella-pata-avatar-mascota_611849-14.jpg'}" class="pet-photo" alt="Foto">
                     </div>
-                    <div class="pet-name">${pet.nombre}</div>
+                    <div class="pet-name">${pet.nombre || pet.pet_nombre}</div>
                     <div class="badge-row">
                         <span class="badge">Especie: ${pet.especie || 'N/A'}</span>
                         <span class="badge">Raza: ${pet.raza || 'N/A'}</span>
@@ -974,14 +1125,21 @@
         const itemsToShow = superHistory.slice(0, superLimit);
         
         itemsToShow.forEach(vet => {
+            const isActive = vet.activa !== false;
+            const toggleIcon = isActive ? '🛑' : '✅';
+            const toggleTitle = isActive ? 'Desactivar' : 'Activar';
+
             const el = document.createElement('div');
             el.className = 'history-card';
+            if (!isActive) el.style.opacity = '0.6';
+
             el.innerHTML = `
                 <div class="history-actions">
-                    <button class="action-btn" title="Editar" onclick="editVet('${vet.id}', '${vet.nombre}', '${vet.telefono}', '${vet.direccion}')">✏️</button>
-                    <button class="action-btn" title="Dar de Baja" onclick="deleteVet('${vet.id}', '${vet.nombre}')">🗑️</button>
+                    <button class="action-btn" title="Editar" onclick="openEditVet('${vet.id}', '${vet.nombre}', '${vet.telefono}', '${vet.direccion}')">✏️</button>
+                    <button class="action-btn" title="${toggleTitle}" onclick="toggleVetActive('${vet.id}', ${isActive}, '${vet.nombre}')">${toggleIcon}</button>
+                    <button class="action-btn" title="Dar de Baja Permanentemente" onclick="deleteVet('${vet.id}', '${vet.nombre}')">🗑️</button>
                 </div>
-                <h4 class="history-title">${vet.nombre}</h4>
+                <h4 class="history-title">${vet.nombre} ${!isActive ? '<span style="color:var(--danger); font-size:0.8rem;">(INACTIVA)</span>' : ''}</h4>
                 <p class="history-sub">Mascotas Activas: <strong>${vet.total_mascotas || 0}</strong></p>
                 <p class="history-sub" style="margin-top: 4px;">Tel: ${vet.telefono}</p>
             `;
@@ -996,15 +1154,23 @@
         renderSuperHistory();
     }
 
-    async function editVet(id, nombre, tel, dir) {
-        const newNombre = prompt("Editar Nombre de la Clínica:", nombre);
-        if (newNombre === null) return;
-        const newTel = prompt("Editar Teléfono:", tel);
-        if (newTel === null) return;
-        const newDir = prompt("Editar Dirección:", dir);
-        if (newDir === null) return;
+    function openEditVet(id, nombre, tel, dir) {
+        document.getElementById('edit-vet-id').value = id;
+        document.getElementById('edit-vet-nombre').value = nombre;
+        document.getElementById('edit-vet-tel').value = tel;
+        document.getElementById('edit-vet-dir').value = dir;
+        openModal('modal-edit-vet');
+    }
 
-        showMsg('super', 'info', 'Actualizando clínica...');
+    async function submitEditVetModal() {
+        const id = document.getElementById('edit-vet-id').value;
+        const newNombre = document.getElementById('edit-vet-nombre').value;
+        const newTel = document.getElementById('edit-vet-tel').value;
+        const newDir = document.getElementById('edit-vet-dir').value;
+
+        if (!newNombre) return;
+
+        showMsgModal('modal-vet', 'info', 'Guardando cambios...');
         try {
             const res = await fetch(`${BASE_URL}/pt-edit-vet`, {
                 method: 'POST',
@@ -1014,23 +1180,128 @@
             let result = await res.json();
             if (Array.isArray(result) && result.length > 0) result = result[0];
             if (result && result.status === 'success') {
-                showMsg('super', 'success', 'Clínica actualizada correctamente.');
+                showMsgModal('modal-vet', 'success', 'Clínica actualizada correctamente.');
                 soundOk();
-                const index = superHistory.findIndex(v => v.id === id);
-                if (index !== -1) {
-                    superHistory[index].nombre = newNombre;
-                    superHistory[index].telefono = newTel;
-                    superHistory[index].direccion = newDir;
-                    renderSuperHistory();
-                }
+                setTimeout(() => {
+                    closeModal('modal-edit-vet');
+                    const index = superHistory.findIndex(v => v.id === id);
+                    if (index !== -1) {
+                        superHistory[index].nombre = newNombre;
+                        superHistory[index].telefono = newTel;
+                        superHistory[index].direccion = newDir;
+                        renderSuperHistory();
+                    }
+                }, 1000);
             } else {
-                showMsg('super', 'error', 'Ocurrió un error interno al intentar actualizar los datos de la veterinaria en la base de datos.');
+                showMsgModal('modal-vet', 'error', 'Error interno al actualizar datos.');
                 soundError();
             }
         } catch (e) {
-            showMsg('super', 'error', 'Error de red al intentar actualizar los datos de la veterinaria. Revisa tu internet.');
+            showMsgModal('modal-vet', 'error', 'Error de red.');
             soundError();
         }
+    }
+
+    async function toggleVetActive(id, isActive, nombre) {
+        const action = isActive ? 'desactivar' : 'activar';
+        if (!confirm(`¿Estás seguro que deseas ${action} la veterinaria "${nombre}"?`)) return;
+
+        showMsg('super', 'info', 'Actualizando estado...');
+        try {
+            const res = await fetch(`${BASE_URL}/pt-toggle-vet`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id, activa: !isActive })
+            });
+            let result = await res.json();
+            if (Array.isArray(result) && result.length > 0) result = result[0];
+            if (result && result.status === 'success') {
+                showMsg('super', 'success', 'Estado actualizado.');
+                soundOk();
+                const index = superHistory.findIndex(v => v.id === id);
+                if (index !== -1) {
+                    superHistory[index].activa = !isActive;
+                    renderSuperHistory();
+                }
+            } else {
+                showMsg('super', 'error', 'Error interno al actualizar estado.');
+                soundError();
+            }
+        } catch (e) {
+            showMsg('super', 'error', 'Error de red.');
+            soundError();
+        }
+    }
+
+    function openEditPet(safePetStr, viewSource) {
+        const pet = JSON.parse(decodeURIComponent(safePetStr));
+        document.getElementById('edit-pet-id').value = pet.id;
+        document.getElementById('edit-pet-view-source').value = viewSource;
+        
+        document.getElementById('edit-pet-display-name').innerText = pet.nombre || pet.pet_nombre;
+        document.getElementById('edit-pet-display-info').innerText = `${pet.especie || 'N/A'} - ${pet.raza || 'N/A'}`;
+
+        document.getElementById('edit-pet-tel').value = pet.dueno_tel || '';
+        document.getElementById('edit-pet-dir').value = pet.dueno_dir || '';
+        document.getElementById('edit-pet-contacto-siempre').checked = pet.contacto_siempre !== false;
+
+        document.getElementById('edit-pet-vacunacion').value = pet.estado_vacunacion || '';
+        document.getElementById('edit-pet-med').value = pet.condiciones_medicas || '';
+        document.getElementById('edit-pet-temp').value = pet.temperamento || 'Dócil y cariñoso';
+
+        editFotoBase64 = pet.foto_url || "";
+        const prev = document.getElementById('edit-foto-preview');
+        if (editFotoBase64) {
+            prev.src = editFotoBase64;
+            prev.style.display = 'block';
+        } else {
+            prev.style.display = 'none';
+        }
+
+        openModal('modal-edit-pet');
+    }
+
+    async function submitEditPetModal() {
+        const body = {
+            pet_id: document.getElementById('edit-pet-id').value,
+            dueno_tel: document.getElementById('edit-pet-tel').value,
+            dueno_dir: document.getElementById('edit-pet-dir').value,
+            contacto_siempre: document.getElementById('edit-pet-contacto-siempre').checked,
+            estado_vacunacion: document.getElementById('edit-pet-vacunacion').value,
+            condiciones: document.getElementById('edit-pet-med').value,
+            temperamento: document.getElementById('edit-pet-temp').value,
+            foto_url: editFotoBase64
+        };
+
+        showMsgModal('modal-pet', 'info', 'Guardando cambios...');
+        try {
+            const res = await fetch(`${BASE_URL}/pt-edit-pet`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            let result = await res.json();
+            if (Array.isArray(result) && result.length > 0) result = result[0];
+            
+            if (result && result.status === 'success') {
+                showMsgModal('modal-pet', 'success', 'Mascota actualizada correctamente.');
+                soundOk();
+                setTimeout(() => window.location.href = window.location.pathname, 1500); // Reload to fetch fresh data
+            } else {
+                showMsgModal('modal-pet', 'error', 'Error interno al actualizar mascota.');
+                soundError();
+            }
+        } catch (e) {
+            showMsgModal('modal-pet', 'error', 'Error de conexión.');
+            soundError();
+        }
+    }
+
+    function showMsgModal(modalSuffix, type, text) {
+        const el = document.getElementById('status-' + modalSuffix);
+        el.className = 'status-msg status-' + type;
+        el.innerText = text;
+        el.style.display = 'block';
     }
 
     async function deleteVet(id, nombre) {
