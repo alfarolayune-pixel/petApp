@@ -917,6 +917,11 @@
         showMsg('search-owner', 'info', 'Buscando...');
         try {
             const res = await fetch(`${BASE_URL}/pt-search-owner?phone=${phone}`);
+            if (!res.ok) {
+                showMsg('search-owner', 'error', 'No se pudo conectar con el sistema. (Asegúrate de importar las últimas actualizaciones).');
+                return;
+            }
+            
             let data = await res.json();
             if (Array.isArray(data) && data.length > 0) data = data[0];
             
@@ -935,10 +940,10 @@
                 showMsg('search-owner', 'success', 'Dueño encontrado y datos cargados.');
                 soundOk();
             } else {
-                showMsg('search-owner', 'error', 'No se encontró dueño con este teléfono.');
+                showMsg('search-owner', 'error', 'No se encontró a ningún dueño registrado con ese número.');
             }
         } catch(e) {
-            showMsg('search-owner', 'error', 'Error de conexión.');
+            showMsg('search-owner', 'error', 'No se encontró a ningún dueño o la conexión falló.');
         }
     }
 
