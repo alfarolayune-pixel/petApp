@@ -408,7 +408,7 @@
             </select>
         </div>
 
-        <button class="btn btn-primary" onclick="submitRegistration()">
+        <button id="btn-reg-pet" class="btn btn-primary" onclick="submitRegistration()">
             ✅ Finalizar y Escanear PeTApp
         </button>
         <div id="status-vet" class="status-msg"></div>
@@ -467,7 +467,7 @@
             <input type="text" id="sup-pin" placeholder="4 dígitos (Ej: 1234)" maxlength="4" style="text-align: center; letter-spacing: 10px; font-weight: bold; font-size: 1.2rem;">
         </div>
 
-        <button class="btn btn-secondary" onclick="submitVetRegistration()">
+        <button id="btn-reg-vet" class="btn btn-secondary" onclick="submitVetRegistration()">
             🏪 Activar Clínica (Escanear NFC)
         </button>
         <div id="status-super" class="status-msg"></div>
@@ -823,10 +823,12 @@
 
                 if (savedSession.role === 'SUPER') {
                     switchView('super');
-                    // Restore form and show message — UID stays pending for button click
                     setTimeout(function() {
                         restoreFormState('super');
-                        showMsg('super', 'success', '📲 PeTApp detectado. Verifica los datos y presiona el botón para registrar.');
+                        // Change button label to indicate bracelet is ready
+                        var vetBtn = document.getElementById('btn-reg-vet');
+                        if (vetBtn) vetBtn.innerHTML = '✅ Pulsera conectada — Guardar Clínica';
+                        showMsg('super', 'success', '📲 PeTApp detectado. Verifica los datos y presiona el botón para guardar.');
                     }, 300);
                 } else if (savedSession.role === 'VET') {
                     if (savedSession.nombre) {
@@ -835,7 +837,10 @@
                     switchView('vet');
                     setTimeout(function() {
                         restoreFormState('vet');
-                        showMsg('vet', 'success', '📲 PeTApp detectado. Verifica los datos y presiona el botón para registrar.');
+                        // Change button label to indicate bracelet is ready
+                        var petBtn = document.getElementById('btn-reg-pet');
+                        if (petBtn) petBtn.innerHTML = '✅ Pulsera conectada — Guardar Mascota';
+                        showMsg('vet', 'success', '📲 PeTApp detectado. Verifica los datos y presiona el botón para guardar.');
                     }, 300);
                 } else if (savedSession.role === 'OWNER') {
                     processAuth(savedSession.nfc_uid);
