@@ -1105,9 +1105,9 @@
         saveFormState('vet');
         try { localStorage.setItem('pt_awaiting_scan', 'true'); } catch(e) {}
         const petUid = await getNfcUid();
-        // Clear flag if scan succeeded natively (Android) or failed
+        if (!petUid) return; // On iPhone: flag stays set, user will scan physically
+        // Scan succeeded natively (Android) → clear flag
         try { localStorage.removeItem('pt_awaiting_scan'); } catch(e) {}
-        if (!petUid) return;
         
         if (body.dueno_uid && body.dueno_uid === petUid) {
             showMsg('vet', 'error', 'El PeTApp del dueño no puede ser el mismo que el de la mascota.');
@@ -1177,9 +1177,9 @@
         saveFormState('super');
         try { localStorage.setItem('pt_awaiting_scan', 'true'); } catch(e) {}
         const vUid = await getNfcUid();
-        // Clear flag if scan succeeded natively (Android) or failed
+        if (!vUid) return; // On iPhone: flag stays set, user will scan physically
+        // Scan succeeded natively (Android) → clear flag
         try { localStorage.removeItem('pt_awaiting_scan'); } catch(e) {}
-        if (!vUid) return;
         payload.nfc_uid = vUid;
 
         showMsg('super', 'info', 'Verificando PeTApp...');
