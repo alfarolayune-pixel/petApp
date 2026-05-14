@@ -795,6 +795,7 @@
 
     // ==========================================
     // PAGE LOAD: iPhone NFC Dual-Read Support
+    // (Exact pattern from controlDePagos/Escuela_Basquetbol.html)
     // ==========================================
     window.addEventListener('DOMContentLoaded', function() {
         const params = new URLSearchParams(window.location.search);
@@ -807,44 +808,47 @@
         if (savedSession && urlUid) {
             const isOwnUid = savedSession.nfc_uid && urlUid === savedSession.nfc_uid.toUpperCase();
 
-            // Only treat as "second scan" if we explicitly set the awaiting flag
-            // (meaning user clicked a scan button and was waiting for NFC)
-            const awaitingScan = localStorage.getItem('pt_awaiting_scan') === 'true';
+            if (!isOwnUid) {
+                // ── DIFFERENT bracelet → restore session & inject UID ──
+                _pendingNfcUid = urlUid; // getNfcUid() will consume this
 
-            if (!isOwnUid && awaitingScan) {
-                // ── SECOND bracelet scan (user was waiting for it) ──
-                _pendingNfcUid = urlUid;
-
-                // Clean URL + clear flag
-                try { window.history.replaceState({}, '', window.location.pathname); } catch(e) {}
-                try { localStorage.removeItem('pt_awaiting_scan'); } catch(e) {}
-
-                // ── INSTANT view restore (no processAuth = no flash) ──
                 adminUid = savedSession.nfc_uid;
                 document.getElementById('view-start').classList.remove('active');
                 document.getElementById('btn-logout').style.display = 'block';
 
+                // Clean URL to prevent re-triggering on manual reload
+                try { window.history.replaceState({}, '', window.location.pathname); } catch(e) {}
+
+                const savedView = localStorage.getItem('pt_active_view') || 'super';
+
                 if (savedSession.role === 'SUPER') {
                     switchView('super');
-                    restoreFormState('super');
-                    showMsg('super', 'success', '📲 PeTApp detectado. Registrando clínica...');
-                    setTimeout(function() { submitVetRegistration(); }, 600);
+                    // Restore form and show message — UID stays pending for button click
+                    setTimeout(function() {
+                        restoreFormState('super');
+                        showMsg('super', 'success', '📲 PeTApp detectado. Verifica los datos y presiona el botón para registrar.');
+                    }, 300);
                 } else if (savedSession.role === 'VET') {
                     if (savedSession.nombre) {
                         document.getElementById('vet-welcome').innerText = 'Hola, ' + savedSession.nombre;
                     }
                     switchView('vet');
-                    restoreFormState('vet');
-                    showMsg('vet', 'success', '📲 PeTApp detectado. Registrando mascota...');
-                    setTimeout(function() { submitRegistration(); }, 600);
+                    setTimeout(function() {
+                        restoreFormState('vet');
+                        showMsg('vet', 'success', '📲 PeTApp detectado. Verifica los datos y presiona el botón para registrar.');
+                    }, 300);
+                } else if (savedSession.role === 'OWNER') {
+                    processAuth(savedSession.nfc_uid);
                 }
                 return; // Skip normal flow
             }
-            // No awaiting flag → fall through to normal login (treats UID as a fresh login)
+            // If it's the user's own UID, fall through to normal login
         }
 
         // ── Normal flow ──
         if (urlUid) {
+            // Clear stale session on fresh login to prevent role hijacking
+            try { localStorage.removeItem('pt_session'); } catch(e) {}
             // Clean URL
             try { window.history.replaceState({}, '', window.location.pathname); } catch(e) {}
             document.getElementById('main-scan-btn').style.display = 'none';
@@ -1101,13 +1105,9 @@
         };
 
         showMsg('vet', 'info', 'Escanea el PeTApp NFC de la mascota para asignar...');
-        // Set awaiting flag + save form BEFORE scanning (for iPhone NFC workaround)
         saveFormState('vet');
-        try { localStorage.setItem('pt_awaiting_scan', 'true'); } catch(e) {}
         const petUid = await getNfcUid();
-        if (!petUid) return; // On iPhone: flag stays set, user will scan physically
-        // Scan succeeded natively (Android) → clear flag
-        try { localStorage.removeItem('pt_awaiting_scan'); } catch(e) {}
+        if (!petUid) return;
         
         if (body.dueno_uid && body.dueno_uid === petUid) {
             showMsg('vet', 'error', 'El PeTApp del dueño no puede ser el mismo que el de la mascota.');
@@ -1173,13 +1173,9 @@
         }
 
         showMsg('super', 'info', 'Escanea el PeTApp maestro NFC de la clínica...');
-        // Set awaiting flag + save form BEFORE scanning (for iPhone NFC workaround)
         saveFormState('super');
-        try { localStorage.setItem('pt_awaiting_scan', 'true'); } catch(e) {}
         const vUid = await getNfcUid();
-        if (!vUid) return; // On iPhone: flag stays set, user will scan physically
-        // Scan succeeded natively (Android) → clear flag
-        try { localStorage.removeItem('pt_awaiting_scan'); } catch(e) {}
+        if (!vUid) return;
         payload.nfc_uid = vUid;
 
         showMsg('super', 'info', 'Verificando PeTApp...');
@@ -1568,7 +1564,6 @@
             localStorage.removeItem('pt_active_view');
             localStorage.removeItem('pt_form_super');
             localStorage.removeItem('pt_form_vet');
-            localStorage.removeItem('pt_awaiting_scan');
         } catch(e) {}
         window.location.href = window.location.pathname;
     }
