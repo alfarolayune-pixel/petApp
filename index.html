@@ -807,8 +807,12 @@
         if (savedSession && urlUid) {
             const isOwnUid = savedSession.nfc_uid && urlUid === savedSession.nfc_uid.toUpperCase();
 
-            if (!isOwnUid) {
-                // ── DIFFERENT bracelet → restore session & inject UID for module scan ──
+            // Only treat as "second scan" if there's saved form data
+            // (meaning user was in the middle of registering something)
+            const hasPendingForm = localStorage.getItem('pt_form_super') || localStorage.getItem('pt_form_vet');
+
+            if (!isOwnUid && hasPendingForm) {
+                // ── DIFFERENT bracelet + pending form → restore session & auto-register ──
                 _pendingNfcUid = urlUid;
 
                 // Clean URL to prevent re-triggering on manual reload
@@ -821,13 +825,12 @@
                 document.getElementById('view-start').classList.remove('active');
                 document.getElementById('btn-logout').style.display = 'block';
 
-                if (savedSession.role === 'SUPER') {
+                if (savedSession.role === 'SUPER' && localStorage.getItem('pt_form_super')) {
                     switchView('super');
                     restoreFormState('super');
                     showMsg('super', 'success', '📲 PeTApp detectado. Registrando clínica...');
                     setTimeout(function() { submitVetRegistration(); }, 600);
-                } else if (savedSession.role === 'VET') {
-                    // Set vet welcome name from saved session
+                } else if (savedSession.role === 'VET' && localStorage.getItem('pt_form_vet')) {
                     if (savedSession.nombre) {
                         document.getElementById('vet-welcome').innerText = 'Hola, ' + savedSession.nombre;
                     }
@@ -835,13 +838,10 @@
                     restoreFormState('vet');
                     showMsg('vet', 'success', '📲 PeTApp detectado. Registrando mascota...');
                     setTimeout(function() { submitRegistration(); }, 600);
-                } else if (savedSession.role === 'OWNER') {
-                    // Owner needs full data to render pets, so processAuth is needed
-                    processAuth(savedSession.nfc_uid);
                 }
                 return; // Skip normal flow
             }
-            // If it's the user's own UID, fall through to normal login
+            // No pending form → fall through to normal login (treats UID as a fresh login)
         }
 
         // ── Normal flow ──
