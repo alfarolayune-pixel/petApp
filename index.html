@@ -723,6 +723,77 @@
     }
 
     // ==========================================
+    // FORM STATE PERSISTENCE (iPhone NFC workaround)
+    // ==========================================
+    function saveFormState(viewName) {
+        const d = {};
+        if (viewName === 'super') {
+            d.supName = document.getElementById('sup-name').value;
+            d.supTel = document.getElementById('sup-tel').value;
+            d.supDir = document.getElementById('sup-dir').value;
+            d.supPin = document.getElementById('sup-pin').value;
+        } else if (viewName === 'vet') {
+            d.dNombre = document.getElementById('reg-d-nombre').value;
+            d.dTel = document.getElementById('reg-d-tel').value;
+            d.dDir = document.getElementById('reg-d-dir').value;
+            d.dUid = document.getElementById('reg-d-uid').value;
+            d.dId = document.getElementById('reg-d-id').value;
+            d.pNombre = document.getElementById('reg-p-nombre').value;
+            d.pEspecie = document.getElementById('reg-p-especie').value;
+            d.pRaza = document.getElementById('reg-p-raza').value;
+            d.pFechaNac = document.getElementById('reg-p-fecha-nac').value;
+            d.pEdad = document.getElementById('reg-p-edad').value;
+            d.pVacunacion = document.getElementById('reg-p-vacunacion').value;
+            d.pMed = document.getElementById('reg-p-med').value;
+            d.pTemp = document.getElementById('reg-p-temp').value;
+            d.contactoSiempre = document.getElementById('reg-d-contacto-siempre').checked;
+        }
+        try { localStorage.setItem('pt_form_' + viewName, JSON.stringify(d)); } catch(e) {}
+    }
+
+    function restoreFormState(viewName) {
+        let d;
+        try { d = JSON.parse(localStorage.getItem('pt_form_' + viewName)); } catch(e) {}
+        if (!d) return false;
+
+        if (viewName === 'super') {
+            document.getElementById('sup-name').value = d.supName || '';
+            document.getElementById('sup-tel').value = d.supTel || '';
+            document.getElementById('sup-dir').value = d.supDir || '';
+            document.getElementById('sup-pin').value = d.supPin || '';
+        } else if (viewName === 'vet') {
+            document.getElementById('reg-d-nombre').value = d.dNombre || '';
+            document.getElementById('reg-d-tel').value = d.dTel || '';
+            document.getElementById('reg-d-dir').value = d.dDir || '';
+            document.getElementById('reg-d-uid').value = d.dUid || '';
+            document.getElementById('reg-d-id').value = d.dId || '';
+            document.getElementById('reg-p-nombre').value = d.pNombre || '';
+            document.getElementById('reg-p-especie').value = d.pEspecie || '';
+            document.getElementById('reg-p-raza').value = d.pRaza || '';
+            document.getElementById('reg-p-fecha-nac').value = d.pFechaNac || '';
+            document.getElementById('reg-p-edad').value = d.pEdad || '';
+            document.getElementById('reg-p-vacunacion').value = d.pVacunacion || '';
+            document.getElementById('reg-p-med').value = d.pMed || '';
+            document.getElementById('reg-p-temp').value = d.pTemp || '';
+            if (d.contactoSiempre !== undefined) document.getElementById('reg-d-contacto-siempre').checked = d.contactoSiempre;
+        }
+
+        // Clear saved form data after restore
+        try { localStorage.removeItem('pt_form_' + viewName); } catch(e) {}
+        return true;
+    }
+
+    // Auto-save form data on any input/change
+    document.addEventListener('input', function() {
+        const activeView = localStorage.getItem('pt_active_view');
+        if (activeView === 'super' || activeView === 'vet') saveFormState(activeView);
+    });
+    document.addEventListener('change', function() {
+        const activeView = localStorage.getItem('pt_active_view');
+        if (activeView === 'super' || activeView === 'vet') saveFormState(activeView);
+    });
+
+    // ==========================================
     // PAGE LOAD: iPhone NFC Dual-Read Support
     // ==========================================
     window.addEventListener('DOMContentLoaded', function() {
@@ -743,18 +814,33 @@
                 // Clean URL to prevent re-triggering on manual reload
                 try { window.history.replaceState({}, '', window.location.pathname); } catch(e) {}
 
+                const savedView = localStorage.getItem('pt_active_view') || 'super';
+
                 if (savedSession.role === 'SUPER') {
                     adminUid = savedSession.nfc_uid;
                     // Re-fetch full super admin data to get history
                     processAuth(savedSession.nfc_uid).then(() => {
-                        // UID pendiente ya está listo para cuando el admin use un módulo
-                        showMsg('super', 'success', '📲 PeTApp detectado. Presiona el botón de la acción que deseas realizar.');
+                        // Restore form state and auto-trigger the action
+                        setTimeout(function() {
+                            if (savedView === 'super') {
+                                restoreFormState('super');
+                                // Auto-trigger vet registration since UID is pending
+                                showMsg('super', 'success', '📲 PeTApp detectado. Verificando datos y registrando...');
+                                setTimeout(function() { submitVetRegistration(); }, 500);
+                            }
+                        }, 300);
                     });
                 } else if (savedSession.role === 'VET') {
                     adminUid = savedSession.nfc_uid;
                     // Re-fetch vet data
                     processAuth(savedSession.nfc_uid).then(() => {
-                        showMsg('vet', 'success', '📲 PeTApp detectado. Presiona el botón de la acción que deseas realizar.');
+                        setTimeout(function() {
+                            if (savedView === 'vet') {
+                                restoreFormState('vet');
+                                showMsg('vet', 'success', '📲 PeTApp detectado. Verificando datos y registrando...');
+                                setTimeout(function() { submitRegistration(); }, 500);
+                            }
+                        }, 300);
                     });
                 } else if (savedSession.role === 'OWNER') {
                     processAuth(savedSession.nfc_uid);
@@ -1470,7 +1556,12 @@
     }
 
     function logoutPetApp() {
-        try { localStorage.removeItem('pt_session'); } catch(e) {}
+        try {
+            localStorage.removeItem('pt_session');
+            localStorage.removeItem('pt_active_view');
+            localStorage.removeItem('pt_form_super');
+            localStorage.removeItem('pt_form_vet');
+        } catch(e) {}
         window.location.href = window.location.pathname;
     }
 
@@ -1478,6 +1569,8 @@
         document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
         document.getElementById('view-' + id).classList.add('active');
         window.scrollTo(0, 0);
+        // Save active view for iPhone NFC session restore
+        try { localStorage.setItem('pt_active_view', id); } catch(e) {}
     }
 
     function showMsg(view, type, text) {
