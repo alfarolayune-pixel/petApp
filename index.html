@@ -649,7 +649,7 @@
                 switchView('super');
                 document.getElementById('btn-logout').style.display = 'block';
                 // Persist session for iPhone NFC workaround
-                try { localStorage.setItem('pt_session', JSON.stringify({ role: 'SUPER', nfc_uid: uid })); } catch(e) {}
+                try { localStorage.setItem('pt_session', JSON.stringify({ role: 'SUPER', nfc_uid: uid, ts: Date.now() })); } catch(e) {}
             } else if (data && data.role === 'VET') {
                 pendingVetData = data;
                 pendingVetUid = uid;
@@ -660,7 +660,7 @@
                 renderOwnerView(data.pets || []);
                 document.getElementById('btn-logout').style.display = 'block';
                 // Persist session for iPhone NFC workaround
-                try { localStorage.setItem('pt_session', JSON.stringify({ role: 'OWNER', nfc_uid: uid, nombre: data.nombre })); } catch(e) {}
+                try { localStorage.setItem('pt_session', JSON.stringify({ role: 'OWNER', nfc_uid: uid, nombre: data.nombre, ts: Date.now() })); } catch(e) {}
             } else if (data && (data.role === 'PET' || data.especie)) {
                 renderPublicPet(data.full_data || data);
             } else {
@@ -690,7 +690,7 @@
             document.getElementById('btn-logout').style.display = 'block';
             soundOk();
             // Persist session for iPhone NFC workaround
-            try { localStorage.setItem('pt_session', JSON.stringify({ role: 'VET', nfc_uid: pendingVetUid, nombre: pendingVetData.nombre, vet_id: pendingVetData.vet_id || pendingVetData.id, pin_seguridad: pendingVetData.pin_seguridad })); } catch(e) {}
+            try { localStorage.setItem('pt_session', JSON.stringify({ role: 'VET', nfc_uid: pendingVetUid, nombre: pendingVetData.nombre, vet_id: pendingVetData.vet_id || pendingVetData.id, pin_seguridad: pendingVetData.pin_seguridad, ts: Date.now() })); } catch(e) {}
         } else {
             showMsgModal('modal-pin', 'error', 'PIN incorrecto. Acceso denegado.');
             soundError();
@@ -808,9 +808,15 @@
         if (savedSession && urlUid) {
             const isOwnUid = savedSession.nfc_uid && urlUid === savedSession.nfc_uid.toUpperCase();
 
-            if (!isOwnUid) {
-                // ── DIFFERENT bracelet → restore session & inject UID ──
-                _pendingNfcUid = urlUid; // getNfcUid() will consume this
+            // Check if session is recent (< 30 min) AND has pending form data
+            const sessionAge = Date.now() - (savedSession.ts || 0);
+            const SESSION_MAX = 30 * 60 * 1000; // 30 minutes
+            const hasFormData = localStorage.getItem('pt_form_super') || localStorage.getItem('pt_form_vet');
+            const isSecondScan = !isOwnUid && sessionAge < SESSION_MAX && hasFormData;
+
+            if (isSecondScan) {
+                // ── SECOND bracelet scan (recent session + form data) ──
+                _pendingNfcUid = urlUid;
 
                 adminUid = savedSession.nfc_uid;
                 document.getElementById('view-start').classList.remove('active');
@@ -819,13 +825,10 @@
                 // Clean URL to prevent re-triggering on manual reload
                 try { window.history.replaceState({}, '', window.location.pathname); } catch(e) {}
 
-                const savedView = localStorage.getItem('pt_active_view') || 'super';
-
                 if (savedSession.role === 'SUPER') {
                     switchView('super');
                     setTimeout(function() {
                         restoreFormState('super');
-                        // Change button label to indicate bracelet is ready
                         var vetBtn = document.getElementById('btn-reg-vet');
                         if (vetBtn) vetBtn.innerHTML = '✅ Pulsera conectada — Guardar Clínica';
                         showMsg('super', 'success', '📲 PeTApp detectado. Verifica los datos y presiona el botón para guardar.');
@@ -837,7 +840,6 @@
                     switchView('vet');
                     setTimeout(function() {
                         restoreFormState('vet');
-                        // Change button label to indicate bracelet is ready
                         var petBtn = document.getElementById('btn-reg-pet');
                         if (petBtn) petBtn.innerHTML = '✅ Pulsera conectada — Guardar Mascota';
                         showMsg('vet', 'success', '📲 PeTApp detectado. Verifica los datos y presiona el botón para guardar.');
@@ -847,7 +849,7 @@
                 }
                 return; // Skip normal flow
             }
-            // If it's the user's own UID, fall through to normal login
+            // Stale session or no form data → fall through to fresh login
         }
 
         // ── Normal flow ──
