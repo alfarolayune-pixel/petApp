@@ -816,39 +816,27 @@
 
                 const savedView = localStorage.getItem('pt_active_view') || 'super';
 
+                // ── INSTANT view restore (no processAuth = no flash) ──
+                adminUid = savedSession.nfc_uid;
+                document.getElementById('view-start').classList.remove('active');
+                document.getElementById('btn-logout').style.display = 'block';
+
                 if (savedSession.role === 'SUPER') {
-                    adminUid = savedSession.nfc_uid;
-                    // Hide start view immediately to prevent flash
-                    document.getElementById('view-start').classList.remove('active');
-                    document.getElementById('btn-logout').style.display = 'block';
-                    // Re-fetch full super admin data to get history
-                    processAuth(savedSession.nfc_uid).then(() => {
-                        // Restore form state and auto-trigger the action
-                        setTimeout(function() {
-                            if (savedView === 'super') {
-                                restoreFormState('super');
-                                // Auto-trigger vet registration since UID is pending
-                                showMsg('super', 'success', '📲 PeTApp detectado. Registrando clínica...');
-                                setTimeout(function() { submitVetRegistration(); }, 500);
-                            }
-                        }, 300);
-                    });
+                    switchView('super');
+                    restoreFormState('super');
+                    showMsg('super', 'success', '📲 PeTApp detectado. Registrando clínica...');
+                    setTimeout(function() { submitVetRegistration(); }, 600);
                 } else if (savedSession.role === 'VET') {
-                    adminUid = savedSession.nfc_uid;
-                    // Hide start view immediately to prevent flash
-                    document.getElementById('view-start').classList.remove('active');
-                    document.getElementById('btn-logout').style.display = 'block';
-                    // Re-fetch vet data
-                    processAuth(savedSession.nfc_uid).then(() => {
-                        setTimeout(function() {
-                            if (savedView === 'vet') {
-                                restoreFormState('vet');
-                                showMsg('vet', 'success', '📲 PeTApp detectado. Registrando mascota...');
-                                setTimeout(function() { submitRegistration(); }, 500);
-                            }
-                        }, 300);
-                    });
+                    // Set vet welcome name from saved session
+                    if (savedSession.nombre) {
+                        document.getElementById('vet-welcome').innerText = 'Hola, ' + savedSession.nombre;
+                    }
+                    switchView('vet');
+                    restoreFormState('vet');
+                    showMsg('vet', 'success', '📲 PeTApp detectado. Registrando mascota...');
+                    setTimeout(function() { submitRegistration(); }, 600);
                 } else if (savedSession.role === 'OWNER') {
+                    // Owner needs full data to render pets, so processAuth is needed
                     processAuth(savedSession.nfc_uid);
                 }
                 return; // Skip normal flow
