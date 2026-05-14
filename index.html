@@ -807,30 +807,29 @@
         if (savedSession && urlUid) {
             const isOwnUid = savedSession.nfc_uid && urlUid === savedSession.nfc_uid.toUpperCase();
 
-            // Only treat as "second scan" if there's saved form data
-            // (meaning user was in the middle of registering something)
-            const hasPendingForm = localStorage.getItem('pt_form_super') || localStorage.getItem('pt_form_vet');
+            // Only treat as "second scan" if we explicitly set the awaiting flag
+            // (meaning user clicked a scan button and was waiting for NFC)
+            const awaitingScan = localStorage.getItem('pt_awaiting_scan') === 'true';
 
-            if (!isOwnUid && hasPendingForm) {
-                // ── DIFFERENT bracelet + pending form → restore session & auto-register ──
+            if (!isOwnUid && awaitingScan) {
+                // ── SECOND bracelet scan (user was waiting for it) ──
                 _pendingNfcUid = urlUid;
 
-                // Clean URL to prevent re-triggering on manual reload
+                // Clean URL + clear flag
                 try { window.history.replaceState({}, '', window.location.pathname); } catch(e) {}
-
-                const savedView = localStorage.getItem('pt_active_view') || 'super';
+                try { localStorage.removeItem('pt_awaiting_scan'); } catch(e) {}
 
                 // ── INSTANT view restore (no processAuth = no flash) ──
                 adminUid = savedSession.nfc_uid;
                 document.getElementById('view-start').classList.remove('active');
                 document.getElementById('btn-logout').style.display = 'block';
 
-                if (savedSession.role === 'SUPER' && localStorage.getItem('pt_form_super')) {
+                if (savedSession.role === 'SUPER') {
                     switchView('super');
                     restoreFormState('super');
                     showMsg('super', 'success', '📲 PeTApp detectado. Registrando clínica...');
                     setTimeout(function() { submitVetRegistration(); }, 600);
-                } else if (savedSession.role === 'VET' && localStorage.getItem('pt_form_vet')) {
+                } else if (savedSession.role === 'VET') {
                     if (savedSession.nombre) {
                         document.getElementById('vet-welcome').innerText = 'Hola, ' + savedSession.nombre;
                     }
@@ -841,7 +840,7 @@
                 }
                 return; // Skip normal flow
             }
-            // No pending form → fall through to normal login (treats UID as a fresh login)
+            // No awaiting flag → fall through to normal login (treats UID as a fresh login)
         }
 
         // ── Normal flow ──
@@ -1102,7 +1101,12 @@
         };
 
         showMsg('vet', 'info', 'Escanea el PeTApp NFC de la mascota para asignar...');
+        // Set awaiting flag + save form BEFORE scanning (for iPhone NFC workaround)
+        saveFormState('vet');
+        try { localStorage.setItem('pt_awaiting_scan', 'true'); } catch(e) {}
         const petUid = await getNfcUid();
+        // Clear flag if scan succeeded natively (Android) or failed
+        try { localStorage.removeItem('pt_awaiting_scan'); } catch(e) {}
         if (!petUid) return;
         
         if (body.dueno_uid && body.dueno_uid === petUid) {
@@ -1169,7 +1173,12 @@
         }
 
         showMsg('super', 'info', 'Escanea el PeTApp maestro NFC de la clínica...');
+        // Set awaiting flag + save form BEFORE scanning (for iPhone NFC workaround)
+        saveFormState('super');
+        try { localStorage.setItem('pt_awaiting_scan', 'true'); } catch(e) {}
         const vUid = await getNfcUid();
+        // Clear flag if scan succeeded natively (Android) or failed
+        try { localStorage.removeItem('pt_awaiting_scan'); } catch(e) {}
         if (!vUid) return;
         payload.nfc_uid = vUid;
 
@@ -1559,6 +1568,7 @@
             localStorage.removeItem('pt_active_view');
             localStorage.removeItem('pt_form_super');
             localStorage.removeItem('pt_form_vet');
+            localStorage.removeItem('pt_awaiting_scan');
         } catch(e) {}
         window.location.href = window.location.pathname;
     }
