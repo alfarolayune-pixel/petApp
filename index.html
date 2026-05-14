@@ -818,6 +818,9 @@
 
                 if (savedSession.role === 'SUPER') {
                     adminUid = savedSession.nfc_uid;
+                    // Hide start view immediately to prevent flash
+                    document.getElementById('view-start').classList.remove('active');
+                    document.getElementById('btn-logout').style.display = 'block';
                     // Re-fetch full super admin data to get history
                     processAuth(savedSession.nfc_uid).then(() => {
                         // Restore form state and auto-trigger the action
@@ -825,19 +828,22 @@
                             if (savedView === 'super') {
                                 restoreFormState('super');
                                 // Auto-trigger vet registration since UID is pending
-                                showMsg('super', 'success', '📲 PeTApp detectado. Verificando datos y registrando...');
+                                showMsg('super', 'success', '📲 PeTApp detectado. Registrando clínica...');
                                 setTimeout(function() { submitVetRegistration(); }, 500);
                             }
                         }, 300);
                     });
                 } else if (savedSession.role === 'VET') {
                     adminUid = savedSession.nfc_uid;
+                    // Hide start view immediately to prevent flash
+                    document.getElementById('view-start').classList.remove('active');
+                    document.getElementById('btn-logout').style.display = 'block';
                     // Re-fetch vet data
                     processAuth(savedSession.nfc_uid).then(() => {
                         setTimeout(function() {
                             if (savedView === 'vet') {
                                 restoreFormState('vet');
-                                showMsg('vet', 'success', '📲 PeTApp detectado. Verificando datos y registrando...');
+                                showMsg('vet', 'success', '📲 PeTApp detectado. Registrando mascota...');
                                 setTimeout(function() { submitRegistration(); }, 500);
                             }
                         }, 300);
@@ -1140,7 +1146,13 @@
             if (backResult && backResult.status === 'success') {
                 showMsg('vet', 'success', '¡Registro Exitoso! PeTApp vinculado a la mascota.');
                 soundOk();
-                setTimeout(() => window.location.href = window.location.pathname, 3000);
+                // Clear form instead of redirecting
+                document.querySelectorAll('#view-vet input[type=text], #view-vet input[type=number], #view-vet input[type=date], #view-vet input[type=tel], #view-vet input[type=hidden]').forEach(el => el.value = '');
+                document.querySelectorAll('#view-vet select').forEach(el => el.selectedIndex = 0);
+                fotoBase64 = '';
+                try { localStorage.removeItem('pt_form_vet'); } catch(e) {}
+                // Refresh session to reload vet history with new pet
+                processAuth(adminUid);
             } else {
                 showMsg('vet', 'error', 'No se pudo registrar la mascota en la base de datos debido a un error interno. Intenta de nuevo.');
                 soundError();
@@ -1192,9 +1204,16 @@
             if (Array.isArray(result) && result.length > 0) result = result[0];
 
             if (result && result.status === 'success') {
-                showMsg('super', 'success', 'Veterinaria registrada. PeTApp maestro activado.');
+                showMsg('super', 'success', '✅ Veterinaria registrada exitosamente. PeTApp maestro activado.');
                 soundOk();
-                setTimeout(() => window.location.href = window.location.pathname, 3000);
+                // Clear form instead of redirecting
+                document.getElementById('sup-name').value = '';
+                document.getElementById('sup-tel').value = '';
+                document.getElementById('sup-dir').value = '';
+                document.getElementById('sup-pin').value = '';
+                try { localStorage.removeItem('pt_form_super'); } catch(e) {}
+                // Refresh session to reload super history with new vet
+                processAuth(adminUid);
             } else {
                 showMsg('super', 'error', 'No se pudo guardar la clínica en la base de datos debido a un error interno del servidor.');
                 soundError();
@@ -1347,20 +1366,15 @@
         const itemsToShow = superHistory.slice(0, superLimit);
         
         itemsToShow.forEach(vet => {
-            const isActive = vet.activa !== false;
-            const toggleIcon = isActive ? '🛑' : '✅';
-            const toggleTitle = isActive ? 'Desactivar' : 'Activar';
-
             const el = document.createElement('div');
             el.className = 'history-card';
-            if (!isActive) el.style.opacity = '0.6';
 
             el.innerHTML = `
                 <div class="history-actions">
                     <button class="action-btn" title="Editar" onclick="openEditVet('${vet.id}', '${vet.nombre}', '${vet.telefono}', '${vet.direccion}')">✏️</button>
-                    <button class="action-btn" title="${toggleTitle}" onclick="toggleVetActive('${vet.id}', ${isActive}, '${vet.nombre}')">${toggleIcon}</button>
+                    <button class="action-btn" title="Eliminar Veterinaria" style="color: var(--danger); opacity: 1;" onclick="deleteVet('${vet.id}', '${vet.nombre}')">🗑️</button>
                 </div>
-                <h4 class="history-title">${vet.nombre} ${!isActive ? '<span style="color:var(--danger); font-size:0.8rem;">(INACTIVA)</span>' : ''}</h4>
+                <h4 class="history-title">${vet.nombre}</h4>
                 <p class="history-sub">Mascotas Activas: <strong>${vet.total_mascotas || 0}</strong></p>
                 <p class="history-sub" style="margin-top: 4px;">Tel: ${vet.telefono}</p>
             `;
@@ -1423,33 +1437,29 @@
         }
     }
 
-    async function toggleVetActive(id, isActive, nombre) {
-        const action = isActive ? 'desactivar' : 'activar';
-        if (!confirm(`¿Estás seguro que deseas ${action} la veterinaria "${nombre}"?`)) return;
+    async function deleteVet(id, nombre) {
+        if (!confirm(`¿Estás seguro que deseas ELIMINAR la veterinaria "${nombre}"?\nEsta acción borrará su registro y liberará su pulsera.`)) return;
 
-        showMsg('super', 'info', 'Actualizando estado...');
+        showMsg('super', 'info', 'Eliminando clínica...');
         try {
-            const res = await fetch(`${BASE_URL}/pt-toggle-vet`, {
+            const res = await fetch(`${BASE_URL}/pt-del-vet`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id, activa: !isActive })
+                body: JSON.stringify({ id })
             });
             let result = await res.json();
             if (Array.isArray(result) && result.length > 0) result = result[0];
             if (result && result.status === 'success') {
-                showMsg('super', 'success', 'Estado actualizado.');
+                showMsg('super', 'success', `Veterinaria "${nombre}" eliminada correctamente.`);
                 soundOk();
-                const index = superHistory.findIndex(v => v.id === id);
-                if (index !== -1) {
-                    superHistory[index].activa = !isActive;
-                    renderSuperHistory();
-                }
+                superHistory = superHistory.filter(v => v.id !== id);
+                renderSuperHistory();
             } else {
-                showMsg('super', 'error', 'Error interno al actualizar estado.');
+                showMsg('super', 'error', 'No se pudo eliminar. ' + (result?.message || 'Puede tener mascotas registradas.'));
                 soundError();
             }
         } catch (e) {
-            showMsg('super', 'error', 'Error de red.');
+            showMsg('super', 'error', 'Error de conexión al intentar eliminar la clínica.');
             soundError();
         }
     }
