@@ -214,7 +214,7 @@
 
 <div class="app-container">
     <div class="branding">
-        <button id="btn-logout" class="logout-btn" onclick="window.location.href = window.location.pathname">Cerrar Sesión</button>
+        <button id="btn-logout" class="logout-btn" onclick="logoutPetApp()">Cerrar Sesión</button>
         <img src="PeTApp_Logo.jpeg" alt="PeTApp Logo" style="max-height: 140px; max-width: 90%; margin-top: 5px; object-fit: contain; filter: drop-shadow(0 4px 10px rgba(0,0,0,0.5));">
     </div>
 
@@ -583,6 +583,7 @@
     let vetLimit = 5;
     let superHistory = [];
     let superLimit = 5;
+    let _pendingNfcUid = null; // UID from URL for iPhone NFC workaround
 
     // --- Audio Feedback ---
     const playSound = (freq, type, duration) => {
@@ -603,28 +604,29 @@
     const soundError = () => playSound(150, 'sawtooth', 0.5);
 
     // --- Core Logic ---
+    // NFC SCAN LÓGICA (Genérica) - Compatible con iPhone vía URL
     async function getNfcUid(timeoutSec = 15) {
-        if (!("NDEFReader" in window)) {
-            alert("NFC no es compatible con este navegador o dispositivo.");
-            return null;
+        // iPhone NFC workaround: if a UID was injected via URL, consume it once
+        if (_pendingNfcUid) {
+            const uid = _pendingNfcUid;
+            _pendingNfcUid = null; // consume — one-time use
+            soundOk();
+            return uid;
         }
-        try {
-            const ndef = new NDEFReader();
-            await ndef.scan();
-            return new Promise((resolve, reject) => {
-                const timer = setTimeout(() => {
-                    alert("Tiempo de espera agotado.");
-                    resolve(null);
-                }, timeoutSec * 1000);
-
-                ndef.onreading = event => {
-                    clearTimeout(timer);
-                    soundOk();
-                    resolve(event.serialNumber.toUpperCase());
-                };
-            });
-        } catch (e) {
-            console.error(e);
+        if ("NDEFReader" in window) {
+            try {
+                const ndef = new NDEFReader();
+                await ndef.scan();
+                return await new Promise((resolve, reject) => {
+                    const timer = setTimeout(() => { resolve(null); }, timeoutSec * 1000);
+                    ndef.onreading = event => { clearTimeout(timer); soundOk(); resolve(event.serialNumber.toUpperCase()); };
+                });
+            } catch (e) {
+                console.error('NFC Error', e);
+                return null;
+            }
+        } else {
+            // Dispositivo sin soporte NFC (iPhone) — sin UID pendiente
             return null;
         }
     }
@@ -641,10 +643,13 @@
             
             if (data && data.role === 'SUPER') {
                 adminUid = uid;
+                if (!data.nfc_uid) data.nfc_uid = uid;
                 superHistory = data.history || [];
                 renderSuperHistory();
                 switchView('super');
                 document.getElementById('btn-logout').style.display = 'block';
+                // Persist session for iPhone NFC workaround
+                try { localStorage.setItem('pt_session', JSON.stringify({ role: 'SUPER', nfc_uid: uid })); } catch(e) {}
             } else if (data && data.role === 'VET') {
                 pendingVetData = data;
                 pendingVetUid = uid;
@@ -654,6 +659,8 @@
                 document.getElementById('owner-welcome').innerText = 'Hola, ' + data.nombre;
                 renderOwnerView(data.pets || []);
                 document.getElementById('btn-logout').style.display = 'block';
+                // Persist session for iPhone NFC workaround
+                try { localStorage.setItem('pt_session', JSON.stringify({ role: 'OWNER', nfc_uid: uid, nombre: data.nombre })); } catch(e) {}
             } else if (data && (data.role === 'PET' || data.especie)) {
                 renderPublicPet(data.full_data || data);
             } else {
@@ -682,6 +689,8 @@
             switchView('vet');
             document.getElementById('btn-logout').style.display = 'block';
             soundOk();
+            // Persist session for iPhone NFC workaround
+            try { localStorage.setItem('pt_session', JSON.stringify({ role: 'VET', nfc_uid: pendingVetUid, nombre: pendingVetData.nombre, vet_id: pendingVetData.vet_id || pendingVetData.id, pin_seguridad: pendingVetData.pin_seguridad })); } catch(e) {}
         } else {
             showMsgModal('modal-pin', 'error', 'PIN incorrecto. Acceso denegado.');
             soundError();
@@ -713,18 +722,57 @@
         });
     }
 
-    window.onload = () => {
-        const urlParams = new URLSearchParams(window.location.search);
-        const externalUid = urlParams.get('uid');
-        if (externalUid) {
-            // Limpiar la URL para evitar ciclos al refrescar
-            window.history.replaceState({}, document.title, window.location.pathname);
-            
+    // ==========================================
+    // PAGE LOAD: iPhone NFC Dual-Read Support
+    // ==========================================
+    window.addEventListener('DOMContentLoaded', function() {
+        const params = new URLSearchParams(window.location.search);
+        const urlUid = params.get('uid') ? params.get('uid').toUpperCase() : null;
+
+        // ── iPhone NFC Session Restore ──
+        let savedSession = null;
+        try { savedSession = JSON.parse(localStorage.getItem('pt_session')); } catch(e) {}
+
+        if (savedSession && urlUid) {
+            const isOwnUid = savedSession.nfc_uid && urlUid === savedSession.nfc_uid.toUpperCase();
+
+            if (!isOwnUid) {
+                // ── DIFFERENT bracelet → restore session & inject UID for module scan ──
+                _pendingNfcUid = urlUid;
+
+                // Clean URL to prevent re-triggering on manual reload
+                try { window.history.replaceState({}, '', window.location.pathname); } catch(e) {}
+
+                if (savedSession.role === 'SUPER') {
+                    adminUid = savedSession.nfc_uid;
+                    // Re-fetch full super admin data to get history
+                    processAuth(savedSession.nfc_uid).then(() => {
+                        // UID pendiente ya está listo para cuando el admin use un módulo
+                        showMsg('super', 'success', '📲 PeTApp detectado. Presiona el botón de la acción que deseas realizar.');
+                    });
+                } else if (savedSession.role === 'VET') {
+                    adminUid = savedSession.nfc_uid;
+                    // Re-fetch vet data
+                    processAuth(savedSession.nfc_uid).then(() => {
+                        showMsg('vet', 'success', '📲 PeTApp detectado. Presiona el botón de la acción que deseas realizar.');
+                    });
+                } else if (savedSession.role === 'OWNER') {
+                    processAuth(savedSession.nfc_uid);
+                }
+                return; // Skip normal flow
+            }
+            // If it's the user's own UID, fall through to normal login
+        }
+
+        // ── Normal flow ──
+        if (urlUid) {
+            // Clean URL
+            try { window.history.replaceState({}, '', window.location.pathname); } catch(e) {}
             document.getElementById('main-scan-btn').style.display = 'none';
             showMsg('main', 'info', 'Cargando datos de PeTApp...');
-            processAuth(externalUid);
+            processAuth(urlUid);
         }
-    };
+    });
 
     let fotoBase64 = "";
     function previewFoto(event) {
@@ -1093,6 +1141,7 @@
                 <div class="history-actions">
                     <button class="action-btn" title="Editar" onclick="openEditPet('${safePetStr}', 'vet')">✏️</button>
                     <button class="action-btn" title="${btnText}" style="color: ${btnColor}; opacity: 1;" onclick="toggleLostStatus('${pet.id}', ${isLost}, 'vet')">🚨</button>
+                    <button class="action-btn" title="Dar de Baja" style="color: var(--danger); opacity: 1;" onclick="deletePet('${pet.id}', '${(pet.pet_nombre || '').replace(/'/g, "\\'")}')">🗑️</button>
                 </div>
                 <h4 class="history-title">${pet.pet_nombre} <span style="font-size:0.8rem; font-weight:normal; color:var(--primary);">- ${pet.especie} (${pet.raza})</span></h4>
                 <p class="history-sub">ID PeTApp: ${pet.nfc_uid || pet.pet_uid || '---'}</p>
@@ -1224,7 +1273,6 @@
                 <div class="history-actions">
                     <button class="action-btn" title="Editar" onclick="openEditVet('${vet.id}', '${vet.nombre}', '${vet.telefono}', '${vet.direccion}')">✏️</button>
                     <button class="action-btn" title="${toggleTitle}" onclick="toggleVetActive('${vet.id}', ${isActive}, '${vet.nombre}')">${toggleIcon}</button>
-                    <button class="action-btn" title="Dar de Baja Permanentemente" onclick="deleteVet('${vet.id}', '${vet.nombre}')">🗑️</button>
                 </div>
                 <h4 class="history-title">${vet.nombre} ${!isActive ? '<span style="color:var(--danger); font-size:0.8rem;">(INACTIVA)</span>' : ''}</h4>
                 <p class="history-sub">Mascotas Activas: <strong>${vet.total_mascotas || 0}</strong></p>
@@ -1391,31 +1439,39 @@
         el.style.display = 'block';
     }
 
-    async function deleteVet(id, nombre) {
-        if (!confirm(`¿Estás seguro que deseas dar de baja la veterinaria "${nombre}"?\nEsta acción eliminará el acceso de esta clínica.`)) return;
+    // ==========================================
+    // DAR DE BAJA MASCOTA (desde panel Vet)
+    // ==========================================
+    async function deletePet(petId, petName) {
+        if (!confirm(`¿Estás seguro que deseas dar de baja a la mascota "${petName}"?\nEsta acción eliminará su registro del sistema.`)) return;
         
-        showMsg('super', 'info', 'Eliminando clínica...');
+        showMsg('vet', 'info', 'Procesando baja de mascota...');
         try {
-            const res = await fetch(`${BASE_URL}/pt-del-vet`, {
+            const res = await fetch(`${BASE_URL}/pt-del-pet`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id })
+                body: JSON.stringify({ pet_id: petId, admin_uid: adminUid })
             });
             let result = await res.json();
             if (Array.isArray(result) && result.length > 0) result = result[0];
             if (result && result.status === 'success') {
-                showMsg('super', 'success', 'Clínica eliminada.');
+                showMsg('vet', 'success', `Mascota "${petName}" dada de baja correctamente.`);
                 soundOk();
-                superHistory = superHistory.filter(v => v.id !== id);
-                renderSuperHistory();
+                vetHistory = vetHistory.filter(p => p.id !== petId);
+                renderVetHistory();
             } else {
-                showMsg('super', 'error', 'No se puede eliminar la clínica porque ya tiene mascotas registradas y asociadas a ella.');
+                showMsg('vet', 'error', 'No se pudo dar de baja la mascota. ' + (result?.message || 'Intenta de nuevo.'));
                 soundError();
             }
         } catch (e) {
-            showMsg('super', 'error', 'Error de conexión al intentar eliminar la clínica. Verifica tu red.');
+            showMsg('vet', 'error', 'Error de conexión al intentar dar de baja la mascota.');
             soundError();
         }
+    }
+
+    function logoutPetApp() {
+        try { localStorage.removeItem('pt_session'); } catch(e) {}
+        window.location.href = window.location.pathname;
     }
 
     function switchView(id) {
