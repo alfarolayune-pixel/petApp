@@ -363,7 +363,7 @@
             <input type="tel" id="reg-d-tel" placeholder="WhatsApp (Ej: 449...)" style="margin-bottom: 12px;">
             <input type="text" id="reg-d-dir" placeholder="Dirección (Opcional)" style="margin-bottom: 12px;">
             <button class="btn btn-outline" id="btn-scan-dueno" onclick="scanDuenoUid()" style="padding: 12px; font-size: 0.85rem;">
-                🔗 Vincular PeTApp Dueño (Opcional)
+                🔗 Escanear PeTApp del Dueño (Paso 1)
             </button>
             <div id="status-scan-dueno" class="status-msg" style="margin-top: 10px; margin-bottom: 0;"></div>
             <div style="margin-top: 15px; margin-bottom: 5px; display: flex; align-items: center; gap: 10px; background: rgba(0,0,0,0.2); padding: 12px; border-radius: 12px; border: 1px solid #334155;">
@@ -411,7 +411,7 @@
         </div>
 
         <button id="btn-reg-pet" class="btn btn-primary" onclick="submitRegistration()">
-            ✅ Finalizar y Escanear PeTApp
+            🐾 Escanear PeTApp Mascota y Guardar (Paso 2)
         </button>
         <div id="status-vet" class="status-msg"></div>
 
@@ -1045,29 +1045,40 @@
     }
 
     async function scanDuenoUid() {
-        showMsg('scan-dueno', 'info', 'Acerca el PeTApp del dueño ahora...');
-        // Guardar estado del formulario e intent para el workaround iPhone NFC
+        const isIphone = !("NDEFReader" in window);
+        if (isIphone) {
+            showMsg('scan-dueno', 'info', '📱 Acerca el iPhone al PeTApp del dueño ahora. iOS abrirá esta pantalla automáticamente con el UID listo.');
+        } else {
+            showMsg('scan-dueno', 'info', 'Acerca el PeTApp del dueño al teléfono ahora...');
+        }
+        // Guardar estado del formulario e intent ANTES de escanear
+        // El intent DEBE persistir en localStorage para el workaround de iPhone
         saveFormState('vet');
         try { localStorage.setItem('pt_scan_intent', 'link_owner'); } catch(e) {}
         const uid = await getNfcUid(10);
+        // IMPORTANTE: Solo eliminar el intent si realmente se obtuvo un UID
+        // (en iPhone, uid será null y la página recargará; el intent debe seguir en localStorage)
+        if (!uid) {
+            if (!isIphone) showMsg('scan-dueno', 'error', 'No se detectó ningún PeTApp. Inténtalo de nuevo.');
+            return;
+        }
         try { localStorage.removeItem('pt_scan_intent'); } catch(e) {}
-        if (!uid) return;
         
-        showMsg('scan-dueno', 'info', 'Verificando disponibilidad...');
+        showMsg('scan-dueno', 'info', 'Verificando PeTApp del dueño...');
         const isDuplicate = await checkDuplicateBracelet(uid);
         if (isDuplicate) {
-            showMsg('scan-dueno', 'error', 'Este PeTApp ya está asignado a otro dueño o mascota. Usa uno nuevo.');
+            showMsg('scan-dueno', 'error', '⚠️ Este PeTApp ya está asignado a otro dueño o mascota. Usa uno nuevo.');
             soundError();
             document.getElementById('reg-d-uid').value = '';
-            document.getElementById('btn-scan-dueno').innerText = '🔗 Vincular PeTApp Dueño (Opcional)';
+            document.getElementById('btn-scan-dueno').innerText = '🔗 Escanear PeTApp del Dueño (Paso 1)';
             document.getElementById('btn-scan-dueno').style.background = 'transparent';
             document.getElementById('btn-scan-dueno').style.color = 'var(--primary)';
             document.getElementById('btn-scan-dueno').style.borderColor = 'var(--primary)';
         } else {
-            showMsg('scan-dueno', 'success', 'PeTApp de dueño vinculado.');
+            showMsg('scan-dueno', 'success', '✅ PeTApp del dueño vinculado correctamente. Ahora llena los datos de la mascota.');
             soundOk();
             document.getElementById('reg-d-uid').value = uid;
-            document.getElementById('btn-scan-dueno').innerText = '✅ PeTApp Dueño Vinculado';
+            document.getElementById('btn-scan-dueno').innerText = '✅ PeTApp Dueño Vinculado (UID: ' + uid.slice(-6) + ')';
             document.getElementById('btn-scan-dueno').style.background = 'rgba(16, 185, 129, 0.15)';
             document.getElementById('btn-scan-dueno').style.color = 'var(--success)';
             document.getElementById('btn-scan-dueno').style.borderColor = 'var(--success)';
@@ -1172,12 +1183,22 @@
             foto_url: fotoBase64 // Se envía en base64 u otra estrategia en backend
         };
 
-        showMsg('vet', 'info', 'Escanea el PeTApp NFC de la mascota para asignar...');
+        const isIphone = !("NDEFReader" in window);
+        if (isIphone) {
+            showMsg('vet', 'info', '📱 Acerca el iPhone al PeTApp de la MASCOTA ahora. iOS abrirá esta pantalla automáticamente con el UID listo y deberás presionar el botón nuevamente para guardar.');
+        } else {
+            showMsg('vet', 'info', 'Acerca el PeTApp de la mascota al teléfono para asignar...');
+        }
         saveFormState('vet');
         try { localStorage.setItem('pt_scan_intent', 'register_pet'); } catch(e) {}
         const petUid = await getNfcUid();
+        // IMPORTANTE: Solo eliminar el intent si realmente se obtuvo un UID
+        // (en iPhone, petUid será null y la página recargará; el intent debe seguir en localStorage)
+        if (!petUid) {
+            if (!isIphone) showMsg('vet', 'error', 'No se detectó ningún PeTApp de mascota. Inténtalo de nuevo.');
+            return;
+        }
         try { localStorage.removeItem('pt_scan_intent'); } catch(e) {}
-        if (!petUid) return;
         
         if (body.dueno_uid && body.dueno_uid === petUid) {
             showMsg('vet', 'error', 'El PeTApp del dueño no puede ser el mismo que el de la mascota.');
