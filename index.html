@@ -747,6 +747,7 @@
             d.pMed = document.getElementById('reg-p-med').value;
             d.pTemp = document.getElementById('reg-p-temp').value;
             d.contactoSiempre = document.getElementById('reg-d-contacto-siempre').checked;
+            d.fotoBase64 = fotoBase64; // Guardar foto para workaround iPhone NFC
         }
         try { localStorage.setItem('pt_form_' + viewName, JSON.stringify(d)); } catch(e) {}
     }
@@ -776,6 +777,13 @@
             document.getElementById('reg-p-med').value = d.pMed || '';
             document.getElementById('reg-p-temp').value = d.pTemp || '';
             if (d.contactoSiempre !== undefined) document.getElementById('reg-d-contacto-siempre').checked = d.contactoSiempre;
+            // Restaurar foto guardada (workaround iPhone NFC: la página se recarga)
+            if (d.fotoBase64) {
+                fotoBase64 = d.fotoBase64;
+                const prev = document.getElementById('foto-preview');
+                prev.src = fotoBase64;
+                prev.style.display = 'inline-block';
+            }
         }
 
         // Clear saved form data after restore
