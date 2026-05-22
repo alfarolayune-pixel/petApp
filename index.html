@@ -365,6 +365,7 @@
             <button class="btn btn-outline" id="btn-scan-dueno" onclick="scanDuenoUid()" style="padding: 12px; font-size: 0.85rem;">
                 🔗 Vincular PeTApp Dueño (Opcional)
             </button>
+            <div id="status-scan-dueno" class="status-msg" style="margin-top: 10px; margin-bottom: 0;"></div>
             <div style="margin-top: 15px; margin-bottom: 5px; display: flex; align-items: center; gap: 10px; background: rgba(0,0,0,0.2); padding: 12px; border-radius: 12px; border: 1px solid #334155;">
                 <input type="checkbox" id="reg-d-contacto-siempre" checked style="width: 20px; height: 20px; margin: 0; padding: 0;">
                 <label for="reg-d-contacto-siempre" style="margin: 0; font-size: 0.85rem; text-transform: none; font-weight: normal; color: #e2e8f0; line-height: 1.3;">Mostrar botones de Llamar/WhatsApp de forma pública (incluso si la mascota no está perdida)</label>
@@ -1044,7 +1045,7 @@
     }
 
     async function scanDuenoUid() {
-        showMsg('vet', 'info', 'Acerca el PeTApp del dueño ahora...');
+        showMsg('scan-dueno', 'info', 'Acerca el PeTApp del dueño ahora...');
         // Guardar estado del formulario e intent para el workaround iPhone NFC
         saveFormState('vet');
         try { localStorage.setItem('pt_scan_intent', 'link_owner'); } catch(e) {}
@@ -1052,10 +1053,10 @@
         try { localStorage.removeItem('pt_scan_intent'); } catch(e) {}
         if (!uid) return;
         
-        showMsg('vet', 'info', 'Verificando disponibilidad...');
+        showMsg('scan-dueno', 'info', 'Verificando disponibilidad...');
         const isDuplicate = await checkDuplicateBracelet(uid);
         if (isDuplicate) {
-            showMsg('vet', 'error', 'Este PeTApp ya está asignado a otro dueño o mascota. Usa uno nuevo.');
+            showMsg('scan-dueno', 'error', 'Este PeTApp ya está asignado a otro dueño o mascota. Usa uno nuevo.');
             soundError();
             document.getElementById('reg-d-uid').value = '';
             document.getElementById('btn-scan-dueno').innerText = '🔗 Vincular PeTApp Dueño (Opcional)';
@@ -1063,7 +1064,7 @@
             document.getElementById('btn-scan-dueno').style.color = 'var(--primary)';
             document.getElementById('btn-scan-dueno').style.borderColor = 'var(--primary)';
         } else {
-            showMsg('vet', 'success', 'PeTApp de dueño vinculado.');
+            showMsg('scan-dueno', 'success', 'PeTApp de dueño vinculado.');
             soundOk();
             document.getElementById('reg-d-uid').value = uid;
             document.getElementById('btn-scan-dueno').innerText = '✅ PeTApp Dueño Vinculado';
