@@ -850,11 +850,20 @@
                         document.getElementById('vet-welcome').innerText = 'Hola, ' + savedSession.nombre;
                     }
                     switchView('vet');
+                    // Leer intent del escaneo: 'link_owner' (vincular dueño) o 'register_pet' (guardar mascota)
+                    var scanIntent = 'register_pet';
+                    try { scanIntent = localStorage.getItem('pt_scan_intent') || 'register_pet'; } catch(e) {}
+                    try { localStorage.removeItem('pt_scan_intent'); } catch(e) {}
                     setTimeout(function() {
                         restoreFormState('vet');
-                        var petBtn = document.getElementById('btn-reg-pet');
-                        if (petBtn) petBtn.innerHTML = '✅ Pulsera conectada — Guardar Mascota';
-                        showMsg('vet', 'success', '📲 PeTApp detectado. Verifica los datos y presiona el botón para guardar.');
+                        if (scanIntent === 'link_owner') {
+                            // Auto-ejecutar scanDuenoUid para consumir _pendingNfcUid inmediatamente
+                            scanDuenoUid();
+                        } else {
+                            var petBtn = document.getElementById('btn-reg-pet');
+                            if (petBtn) petBtn.innerHTML = '✅ Pulsera conectada — Guardar Mascota';
+                            showMsg('vet', 'success', '📲 PeTApp detectado. Verifica los datos y presiona el botón para guardar.');
+                        }
                     }, 300);
                 } else if (savedSession.role === 'OWNER') {
                     processAuth(savedSession.nfc_uid);
@@ -1036,7 +1045,11 @@
 
     async function scanDuenoUid() {
         showMsg('vet', 'info', 'Acerca el PeTApp del dueño ahora...');
+        // Guardar estado del formulario e intent para el workaround iPhone NFC
+        saveFormState('vet');
+        try { localStorage.setItem('pt_scan_intent', 'link_owner'); } catch(e) {}
         const uid = await getNfcUid(10);
+        try { localStorage.removeItem('pt_scan_intent'); } catch(e) {}
         if (!uid) return;
         
         showMsg('vet', 'info', 'Verificando disponibilidad...');
@@ -1160,7 +1173,9 @@
 
         showMsg('vet', 'info', 'Escanea el PeTApp NFC de la mascota para asignar...');
         saveFormState('vet');
+        try { localStorage.setItem('pt_scan_intent', 'register_pet'); } catch(e) {}
         const petUid = await getNfcUid();
+        try { localStorage.removeItem('pt_scan_intent'); } catch(e) {}
         if (!petUid) return;
         
         if (body.dueno_uid && body.dueno_uid === petUid) {
