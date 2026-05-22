@@ -114,6 +114,7 @@
             transition: all 0.2s;
         }
         input:focus { outline: none; border-color: var(--primary); background: rgba(0,0,0,0.4); }
+        .input-error { border-color: var(--danger) !important; box-shadow: 0 0 0 3px rgba(244, 63, 94, 0.18) !important; }
 
         /* --- Status Messages --- */
         .status-msg { 
@@ -374,7 +375,7 @@
 
         <div style="margin-bottom: 30px; border-top: 1px solid #334155; padding-top: 25px;">
             <label>2. Perfil de la Mascota</label>
-            <div style="margin-bottom: 20px; text-align: center;">
+            <div id="foto-upload-area" style="margin-bottom: 20px; text-align: center; border-radius: 18px; padding: 4px; transition: box-shadow 0.2s;">
                 <div style="display: flex; gap: 10px; justify-content: center; margin-bottom: 15px;">
                     <input type="file" id="reg-p-foto" accept="image/*" capture="environment" style="display: none;" onchange="previewFoto(event)">
                     <label for="reg-p-foto" class="btn btn-outline" style="margin: 0; flex: 1; padding: 12px; font-size: 0.9rem;">📸 Tomar Foto</label>
@@ -792,13 +793,16 @@
     }
 
     // Auto-save form data on any input/change
-    document.addEventListener('input', function() {
+    // También limpia el borde rojo del campo en cuanto el usuario empiece a corregirlo
+    document.addEventListener('input', function(e) {
         const activeView = localStorage.getItem('pt_active_view');
         if (activeView === 'super' || activeView === 'vet') saveFormState(activeView);
+        if (e.target && e.target.classList) e.target.classList.remove('input-error');
     });
-    document.addEventListener('change', function() {
+    document.addEventListener('change', function(e) {
         const activeView = localStorage.getItem('pt_active_view');
         if (activeView === 'super' || activeView === 'vet') saveFormState(activeView);
+        if (e.target && e.target.classList) e.target.classList.remove('input-error');
     });
 
     // ==========================================
@@ -876,7 +880,9 @@
     function previewFoto(event) {
         const file = event.target.files[0];
         if (!file) return;
-        
+        // Quitar error de foto al seleccionar una imagen
+        const fotoArea = document.getElementById('foto-upload-area');
+        if (fotoArea) fotoArea.classList.remove('input-error');
         const reader = new FileReader();
         reader.onload = (e) => {
             const img = new Image();
@@ -1094,8 +1100,41 @@
     }
 
     async function submitRegistration() {
-        if (!document.getElementById('reg-d-nombre').value || !document.getElementById('reg-p-nombre').value) {
-            showMsg('vet', 'error', 'El nombre del dueño y de la mascota son obligatorios.');
+        // --- Validación de campos obligatorios ---
+        const camposObligatorios = ['reg-d-nombre', 'reg-d-tel', 'reg-p-nombre'];
+        camposObligatorios.forEach(id => document.getElementById(id).classList.remove('input-error'));
+        const fotoArea = document.getElementById('foto-upload-area');
+        if (fotoArea) fotoArea.classList.remove('input-error');
+
+        const dNombre = document.getElementById('reg-d-nombre').value.trim();
+        const dTel    = document.getElementById('reg-d-tel').value.trim();
+        const pNombre = document.getElementById('reg-p-nombre').value.trim();
+        const telDigits = dTel.replace(/\D/g, '');
+
+        const errores = [];
+        if (!dNombre) {
+            document.getElementById('reg-d-nombre').classList.add('input-error');
+            errores.push('nombre del dueño');
+        }
+        if (!dTel) {
+            document.getElementById('reg-d-tel').classList.add('input-error');
+            errores.push('teléfono del dueño');
+        } else if (telDigits.length !== 10) {
+            document.getElementById('reg-d-tel').classList.add('input-error');
+            errores.push('teléfono (debe tener exactamente 10 dígitos)');
+        }
+        if (!pNombre) {
+            document.getElementById('reg-p-nombre').classList.add('input-error');
+            errores.push('nombre de la mascota');
+        }
+        if (!fotoBase64) {
+            if (fotoArea) fotoArea.classList.add('input-error');
+            errores.push('fotografía de la mascota');
+        }
+        if (errores.length > 0) {
+            const ultimo = errores.pop();
+            const lista = errores.length > 0 ? errores.join(', ') + ' y ' + ultimo : ultimo;
+            showMsg('vet', 'error', `⚠️ Completa los campos obligatorios: ${lista}.`);
             soundError();
             return;
         }
