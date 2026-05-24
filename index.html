@@ -1231,8 +1231,36 @@
                 soundOk();
                 // Clear form instead of redirecting
                 document.querySelectorAll('#view-vet input[type=text], #view-vet input[type=number], #view-vet input[type=date], #view-vet input[type=tel], #view-vet input[type=hidden]').forEach(el => el.value = '');
+                document.querySelectorAll('#view-vet textarea').forEach(el => el.value = '');
                 document.querySelectorAll('#view-vet select').forEach(el => el.selectedIndex = 0);
+                // Limpiar campo de búsqueda de dueño
+                document.getElementById('search-d-tel').value = '';
+                // Limpiar foto: ocultar preview y limpiar file inputs
                 fotoBase64 = '';
+                const fotoPreview = document.getElementById('foto-preview');
+                fotoPreview.src = '';
+                fotoPreview.style.display = 'none';
+                document.getElementById('reg-p-foto').value = '';
+                document.getElementById('reg-p-foto-upload').value = '';
+                const fotoAreaEl = document.getElementById('foto-upload-area');
+                if (fotoAreaEl) fotoAreaEl.classList.remove('input-error');
+                // Restablecer botón de escaneo del dueño a su estado original
+                const btnScanDueno = document.getElementById('btn-scan-dueno');
+                btnScanDueno.innerText = '🔗 Escanear PeTApp del Dueño (Paso 1)';
+                btnScanDueno.style.background = 'transparent';
+                btnScanDueno.style.color = 'var(--primary)';
+                btnScanDueno.style.borderColor = 'var(--primary)';
+                btnScanDueno.disabled = false;
+                // Restablecer botón de guardar mascota a su estado original
+                const btnRegPet = document.getElementById('btn-reg-pet');
+                btnRegPet.innerHTML = '🐾 Escanear PeTApp Mascota y Guardar (Paso 2)';
+                // Restablecer checkbox de contacto a "marcado" (valor por defecto)
+                document.getElementById('reg-d-contacto-siempre').checked = true;
+                // Limpiar mensajes de estado secundarios
+                const statusScanDueno = document.getElementById('status-scan-dueno');
+                if (statusScanDueno) statusScanDueno.style.display = 'none';
+                const statusSearchOwner = document.getElementById('status-search-owner');
+                if (statusSearchOwner) statusSearchOwner.style.display = 'none';
                 try { localStorage.removeItem('pt_form_vet'); } catch(e) {}
                 // Refresh session to reload vet history with new pet
                 processAuth(adminUid);
