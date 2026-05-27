@@ -362,6 +362,7 @@
             <input type="text" id="reg-d-nombre" placeholder="Nombre completo" style="margin-bottom: 12px;">
             <input type="tel" id="reg-d-tel" placeholder="WhatsApp (Ej: 449...)" style="margin-bottom: 12px;">
             <input type="text" id="reg-d-dir" placeholder="Dirección (Opcional)" style="margin-bottom: 12px;">
+            <input type="password" id="reg-d-pin" placeholder="PIN de Seguridad (4 dígitos)" maxlength="4" inputmode="numeric" style="margin-bottom: 12px; text-align: center; letter-spacing: 15px; font-size: 1.1rem; font-weight: bold;">
             <button class="btn btn-outline" id="btn-scan-dueno" onclick="scanDuenoUid()" style="padding: 12px; font-size: 0.85rem;">
                 🔗 Escanear PeTApp del Dueño (Paso 1)
             </button>
@@ -447,6 +448,18 @@
             <button class="btn btn-primary" onclick="verifyVetPin()">🔓 Entrar</button>
             <button class="btn btn-outline" style="margin-top: 10px; border-color: #334155; color: #94a3b8;" onclick="closeModal('modal-pin')">Cancelar</button>
             <div id="status-modal-pin" class="status-msg"></div>
+        </div>
+    </div>
+
+    <!-- Modal: PIN de Dueño -->
+    <div id="modal-owner-pin" class="modal-backdrop">
+        <div class="modal-content" style="text-align: center; max-width: 320px;">
+            <h3 style="margin-top: 0; color: var(--primary);">Seguridad</h3>
+            <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 20px;">Ingresa tu PIN de seguridad de 4 dígitos para editar los datos de tu mascota.</p>
+            <input type="password" id="owner-pin-input" style="text-align: center; letter-spacing: 15px; font-size: 1.8rem; font-weight: bold; margin-bottom: 20px;" maxlength="4" placeholder="••••" inputmode="numeric">
+            <button class="btn btn-primary" onclick="verifyOwnerPin()">🔓 Entrar</button>
+            <button class="btn btn-outline" style="margin-top: 10px; border-color: #334155; color: #94a3b8;" onclick="closeModal('modal-owner-pin')">Cancelar</button>
+            <div id="status-modal-owner-pin" class="status-msg"></div>
         </div>
     </div>
 
@@ -589,6 +602,8 @@
     let superHistory = [];
     let superLimit = 5;
     let _pendingNfcUid = null; // UID from URL for iPhone NFC workaround
+    let ownerPin = null; // Stored owner PIN for validation
+    let pendingEditPetStr = null; // Stored pet JSON string while validating PIN
 
     // --- Audio Feedback ---
     const playSound = (freq, type, duration) => {
@@ -661,11 +676,12 @@
                 document.getElementById('vet-pin-input').value = '';
                 openModal('modal-pin');
             } else if (data && data.role === 'OWNER') {
+                ownerPin = data.pin_seguridad;
                 document.getElementById('owner-welcome').innerText = 'Hola, ' + data.nombre;
                 renderOwnerView(data.pets || []);
                 document.getElementById('btn-logout').style.display = 'block';
                 // Persist session for iPhone NFC workaround
-                try { localStorage.setItem('pt_session', JSON.stringify({ role: 'OWNER', nfc_uid: uid, nombre: data.nombre, ts: Date.now() })); } catch(e) {}
+                try { localStorage.setItem('pt_session', JSON.stringify({ role: 'OWNER', nfc_uid: uid, nombre: data.nombre, pin_seguridad: data.pin_seguridad, ts: Date.now() })); } catch(e) {}
             } else if (data && (data.role === 'PET' || data.especie)) {
                 renderPublicPet(data.full_data || data);
             } else {
@@ -741,6 +757,7 @@
             d.dNombre = document.getElementById('reg-d-nombre').value;
             d.dTel = document.getElementById('reg-d-tel').value;
             d.dDir = document.getElementById('reg-d-dir').value;
+            d.dPin = document.getElementById('reg-d-pin').value;
             d.dUid = document.getElementById('reg-d-uid').value;
             d.dId = document.getElementById('reg-d-id').value;
             d.pNombre = document.getElementById('reg-p-nombre').value;
@@ -771,6 +788,7 @@
             document.getElementById('reg-d-nombre').value = d.dNombre || '';
             document.getElementById('reg-d-tel').value = d.dTel || '';
             document.getElementById('reg-d-dir').value = d.dDir || '';
+            document.getElementById('reg-d-pin').value = d.dPin || '';
             document.getElementById('reg-d-uid').value = d.dUid || '';
             document.getElementById('reg-d-id').value = d.dId || '';
             document.getElementById('reg-p-nombre').value = d.pNombre || '';
@@ -870,6 +888,7 @@
                         }
                     }, 300);
                 } else if (savedSession.role === 'OWNER') {
+                    ownerPin = savedSession.pin_seguridad;
                     processAuth(savedSession.nfc_uid);
                 }
                 return; // Skip normal flow
@@ -945,6 +964,11 @@
         document.getElementById(id).style.display = 'none';
         const statusEls = document.querySelectorAll('#' + id + ' .status-msg');
         statusEls.forEach(el => el.style.display = 'none');
+        if (id === 'modal-owner-pin') {
+            document.getElementById('owner-pin-input').value = '';
+        } else if (id === 'modal-pin') {
+            document.getElementById('vet-pin-input').value = '';
+        }
     }
 
     let editFotoBase64 = "";
@@ -1110,6 +1134,7 @@
                 document.getElementById('reg-d-nombre').value = data.nombre;
                 document.getElementById('reg-d-tel').value = data.telefono_p;
                 document.getElementById('reg-d-dir').value = data.direccion || '';
+                document.getElementById('reg-d-pin').value = ''; // Clean PIN field if existing owner is loaded
                 if (data.nfc_uid) {
                     document.getElementById('reg-d-uid').value = data.nfc_uid;
                     document.getElementById('btn-scan-dueno').innerText = '✅ Dueño vinculado por sistema';
@@ -1129,7 +1154,7 @@
 
     async function submitRegistration() {
         // --- Validación de campos obligatorios ---
-        const camposObligatorios = ['reg-d-nombre', 'reg-d-tel', 'reg-p-nombre'];
+        const camposObligatorios = ['reg-d-nombre', 'reg-d-tel', 'reg-d-pin', 'reg-p-nombre'];
         camposObligatorios.forEach(id => document.getElementById(id).classList.remove('input-error'));
         const fotoArea = document.getElementById('foto-upload-area');
         if (fotoArea) fotoArea.classList.remove('input-error');
@@ -1137,7 +1162,10 @@
         const dNombre = document.getElementById('reg-d-nombre').value.trim();
         const dTel    = document.getElementById('reg-d-tel').value.trim();
         const pNombre = document.getElementById('reg-p-nombre').value.trim();
+        const dId     = document.getElementById('reg-d-id').value;
+        const dPin    = document.getElementById('reg-d-pin').value.trim();
         const telDigits = dTel.replace(/\D/g, '');
+        const pinDigits = dPin.replace(/\D/g, '');
 
         const errores = [];
         if (!dNombre) {
@@ -1150,6 +1178,15 @@
         } else if (telDigits.length !== 10) {
             document.getElementById('reg-d-tel').classList.add('input-error');
             errores.push('teléfono (debe tener exactamente 10 dígitos)');
+        }
+        if (!dId) { // Solo si es dar de alta a un dueño nuevo
+            if (!dPin) {
+                document.getElementById('reg-d-pin').classList.add('input-error');
+                errores.push('PIN de seguridad del dueño');
+            } else if (pinDigits.length !== 4) {
+                document.getElementById('reg-d-pin').classList.add('input-error');
+                errores.push('PIN de seguridad (debe tener exactamente 4 dígitos)');
+            }
         }
         if (!pNombre) {
             document.getElementById('reg-p-nombre').classList.add('input-error');
@@ -1173,6 +1210,7 @@
             dueno_nombre: document.getElementById('reg-d-nombre').value,
             dueno_tel: document.getElementById('reg-d-tel').value,
             dueno_dir: document.getElementById('reg-d-dir').value,
+            dueno_pin: document.getElementById('reg-d-pin').value.trim(),
             dueno_uid: document.getElementById('reg-d-uid').value,
             pet_nombre: document.getElementById('reg-p-nombre').value,
             especie: document.getElementById('reg-p-especie').value,
@@ -1233,7 +1271,8 @@
                 showMsg('vet', 'success', '¡Registro Exitoso! PeTApp vinculado a la mascota.');
                 soundOk();
                 // Clear form instead of redirecting
-                document.querySelectorAll('#view-vet input[type=text], #view-vet input[type=number], #view-vet input[type=date], #view-vet input[type=tel], #view-vet input[type=hidden]').forEach(el => el.value = '');
+                document.querySelectorAll('#view-vet input[type=text], #view-vet input[type=number], #view-vet input[type=date], #view-vet input[type=tel], #view-vet input[type=hidden], #view-vet input[type=password]').forEach(el => el.value = '');
+                document.getElementById('reg-d-pin').value = '';
                 document.querySelectorAll('#view-vet textarea').forEach(el => el.value = '');
                 document.querySelectorAll('#view-vet select').forEach(el => el.selectedIndex = 0);
                 // Limpiar campo de búsqueda de dueño
@@ -1624,6 +1663,36 @@
     }
 
     function openEditPet(safePetStr, viewSource) {
+        if (viewSource === 'owner') {
+            pendingEditPetStr = safePetStr;
+            document.getElementById('owner-pin-input').value = '';
+            openModal('modal-owner-pin');
+            setTimeout(() => {
+                const pinInput = document.getElementById('owner-pin-input');
+                if (pinInput) pinInput.focus();
+            }, 300);
+            return;
+        }
+        openEditPetActual(safePetStr, viewSource);
+    }
+
+    function verifyOwnerPin() {
+        const pinInput = document.getElementById('owner-pin-input');
+        const inputPin = pinInput.value;
+        if (!inputPin) return;
+
+        if (inputPin === ownerPin) {
+            closeModal('modal-owner-pin');
+            pinInput.value = '';
+            soundOk();
+            openEditPetActual(pendingEditPetStr, 'owner');
+        } else {
+            showMsgModal('modal-owner-pin', 'error', 'PIN incorrecto. Acceso denegado.');
+            soundError();
+        }
+    }
+
+    function openEditPetActual(safePetStr, viewSource) {
         const pet = JSON.parse(decodeURIComponent(safePetStr));
         document.getElementById('edit-pet-id').value = pet.id;
         document.getElementById('edit-pet-view-source').value = viewSource;
@@ -1731,6 +1800,8 @@
             localStorage.removeItem('pt_form_super');
             localStorage.removeItem('pt_form_vet');
         } catch(e) {}
+        ownerPin = null;
+        pendingEditPetStr = null;
         window.location.href = window.location.pathname;
     }
 
