@@ -209,6 +209,43 @@
             position: absolute; top: 15px; right: 15px; background: none; border: none;
             color: var(--text-muted); font-size: 1.5rem; cursor: pointer;
         }
+
+        /* --- Reward Banner --- */
+        @keyframes rewardPulse {
+            0%   { box-shadow: 0 10px 25px rgba(245, 158, 11, 0.5); transform: scale(1); }
+            50%  { box-shadow: 0 15px 35px rgba(245, 158, 11, 0.8); transform: scale(1.01); }
+            100% { box-shadow: 0 10px 25px rgba(245, 158, 11, 0.5); transform: scale(1); }
+        }
+        .reward-banner {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: #1c1400;
+            padding: 20px 15px;
+            border-radius: 18px;
+            margin-bottom: 20px;
+            text-align: center;
+            animation: rewardPulse 1.8s ease-in-out infinite;
+            border: 3px solid #fbbf24;
+        }
+        .reward-banner .reward-label {
+            font-size: 0.85rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 6px;
+            opacity: 0.85;
+        }
+        .reward-banner .reward-amount {
+            font-size: 3rem;
+            font-weight: 800;
+            line-height: 1;
+            margin-bottom: 6px;
+            letter-spacing: -1px;
+        }
+        .reward-banner .reward-sub {
+            font-size: 0.85rem;
+            font-weight: 700;
+            opacity: 0.8;
+        }
     </style>
 </head>
 <body>
@@ -240,6 +277,11 @@
         <div id="pub-alert-lost" style="display:none; background: var(--danger); color: white; padding: 15px; border-radius: 16px; margin-bottom: 20px; text-align: center; font-weight: 800; font-size: 1.1rem; box-shadow: 0 10px 25px rgba(244, 63, 94, 0.4); animation: pulse 1.5s infinite;">
             🚨 ¡ESTA MASCOTA ESTÁ PERDIDA! 🚨<br>
             <span style="font-size: 0.9rem; font-weight: 600;">Por favor, contacta al dueño inmediatamente.</span>
+        </div>
+        <div id="pub-reward-banner" class="reward-banner" style="display:none;">
+            <div class="reward-label">💰 Recompensa por su regreso 💰</div>
+            <div id="pub-reward-amount" class="reward-amount">$0</div>
+            <div class="reward-sub">Al devolver esta mascota a su dueño</div>
         </div>
         <div class="pet-card">
             <div class="pet-photo-container">
@@ -582,6 +624,25 @@
 
         <button class="btn btn-primary" onclick="submitEditPetModal()">💾 Guardar Cambios</button>
         <div id="status-modal-pet" class="status-msg"></div>
+    </div>
+</div>
+
+<!-- Modal: Reportar Mascota Perdida con Recompensa -->
+<div id="modal-report-lost" class="modal-backdrop">
+    <div class="modal-content" style="text-align: center; max-width: 360px;">
+        <button class="modal-close" onclick="closeModal('modal-report-lost')">×</button>
+        <div style="font-size: 2.5rem; margin-bottom: 10px;">🚨</div>
+        <h3 style="margin-top: 0; color: var(--danger); margin-bottom: 5px;">Reportar Mascota Perdida</h3>
+        <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 25px;">¿Ofreces una recompensa a quien la devuelva? <br><strong style="color: #e2e8f0;">(Opcional)</strong></p>
+        
+        <div style="position: relative; margin-bottom: 10px;">
+            <span style="position: absolute; left: 18px; top: 50%; transform: translateY(-50%); font-size: 1.3rem; font-weight: 800; color: var(--warning); pointer-events: none; z-index: 1;">$</span>
+            <input type="text" id="report-lost-recompensa" inputmode="decimal" placeholder="500" style="text-align: center; font-size: 1.8rem; font-weight: 800; padding-left: 45px; letter-spacing: 2px; border-color: var(--warning); color: var(--warning);">
+        </div>
+        <p style="color: var(--text-muted); font-size: 0.75rem; margin-bottom: 25px;">Déjalo vacío si no deseas ofrecer recompensa.</p>
+        
+        <button class="btn" style="background: var(--danger); color: white; margin-bottom: 10px;" onclick="confirmReportLost()">🚨 Confirmar Reporte de Pérdida</button>
+        <button class="btn btn-outline" style="border-color: #334155; color: #94a3b8;" onclick="closeModal('modal-report-lost')">Cancelar</button>
     </div>
 </div>
 
@@ -1011,6 +1072,14 @@
 
         if (pet.esta_perdida) {
             document.getElementById('pub-alert-lost').style.display = 'block';
+            // Reward banner: show only if recompensa is defined and non-empty
+            const rewardBanner = document.getElementById('pub-reward-banner');
+            if (pet.recompensa && String(pet.recompensa).trim() !== '') {
+                document.getElementById('pub-reward-amount').innerText = '$' + pet.recompensa;
+                rewardBanner.style.display = 'block';
+            } else {
+                rewardBanner.style.display = 'none';
+            }
             document.getElementById('pub-classic-view').style.display = 'none';
             document.getElementById('pub-carousel-view').style.display = 'block';
             
@@ -1034,6 +1103,7 @@
             }
         } else {
             document.getElementById('pub-alert-lost').style.display = 'none';
+            document.getElementById('pub-reward-banner').style.display = 'none';
             document.getElementById('pub-classic-view').style.display = 'block';
             document.getElementById('pub-carousel-view').style.display = 'none';
             
@@ -1481,7 +1551,7 @@
                             <div class="info-text">${pet.condiciones_medicas || '---'}</div>
                         </div>
 
-                        <button class="btn" style="background: ${btnColor}; color: white; margin-top: 20px; width: 100%; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3);" onclick="toggleLostStatus('${pet.id}', ${isLost}, 'owner')">
+                        <button class="btn" style="background: ${btnColor}; color: white; margin-top: 20px; width: 100%; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3);" onclick="${isLost ? `toggleLostStatus('${pet.id}', true, 'owner')` : `openReportLostModal('${pet.id}')`}">
                             ${btnText}
                         </button>
                         
@@ -1529,7 +1599,25 @@
         container.scrollTo({ left: slideWidth * index, behavior: 'smooth' });
     }
 
-    async function toggleLostStatus(petId, isCurrentlyLost, viewType) {
+    // --- Reporte de Mascota Perdida con Recompensa ---
+    let _pendingLostPetId = null;
+
+    function openReportLostModal(petId) {
+        _pendingLostPetId = petId;
+        document.getElementById('report-lost-recompensa').value = '';
+        openModal('modal-report-lost');
+    }
+
+    function confirmReportLost() {
+        const recompensa = document.getElementById('report-lost-recompensa').value.trim();
+        closeModal('modal-report-lost');
+        if (_pendingLostPetId) {
+            toggleLostStatus(_pendingLostPetId, false, 'owner', recompensa);
+            _pendingLostPetId = null;
+        }
+    }
+
+    async function toggleLostStatus(petId, isCurrentlyLost, viewType, recompensa = '') {
         const actionText = isCurrentlyLost ? "marcar como ENCONTRADA" : "reportar como PERDIDA";
         if (!confirm(`¿Estás seguro que deseas ${actionText} a esta mascota?`)) return;
         
@@ -1538,7 +1626,7 @@
             const res = await fetch(`${BASE_URL}/pt-toggle-lost`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ pet_id: petId, esta_perdida: !isCurrentlyLost })
+                body: JSON.stringify({ pet_id: petId, esta_perdida: !isCurrentlyLost, recompensa: recompensa })
             });
             let result = await res.json();
             if (Array.isArray(result) && result.length > 0) result = result[0];
