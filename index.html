@@ -284,6 +284,9 @@
             <div class="reward-sub">Al devolver esta mascota a su dueño</div>
         </div>
         <div class="pet-card">
+            <div id="pub-lost-thanks" style="display:none; background: rgba(45, 212, 191, 0.08); border: 1.5px solid var(--primary); color: var(--primary); padding: 12px; border-radius: 16px; margin-bottom: 20px; text-align: center; font-weight: 600; font-size: 1rem; line-height: 1.4;">
+                💚 Gracias por ayudarme a volver a casa 🐾
+            </div>
             <div class="pet-photo-container">
                 <img id="pub-foto" src="" class="pet-photo" alt="Foto">
             </div>
@@ -1072,6 +1075,8 @@
 
         if (pet.esta_perdida) {
             document.getElementById('pub-alert-lost').style.display = 'block';
+            const thanksMsg = document.getElementById('pub-lost-thanks');
+            if (thanksMsg) thanksMsg.style.display = 'block';
             // Reward banner: show only if recompensa is defined and non-empty
             const rewardBanner = document.getElementById('pub-reward-banner');
             if (pet.recompensa && String(pet.recompensa).trim() !== '') {
@@ -1103,6 +1108,8 @@
             }
         } else {
             document.getElementById('pub-alert-lost').style.display = 'none';
+            const thanksMsg = document.getElementById('pub-lost-thanks');
+            if (thanksMsg) thanksMsg.style.display = 'none';
             document.getElementById('pub-reward-banner').style.display = 'none';
             document.getElementById('pub-classic-view').style.display = 'block';
             document.getElementById('pub-carousel-view').style.display = 'none';
