@@ -1865,11 +1865,12 @@
         if (!inputPin) return;
 
         if (inputPin === ownerPin) {
+            // Leer intent ANTES de closeModal (closeModal borra pt_pin_intent)
+            var pinIntent = null;
+            try { pinIntent = localStorage.getItem('pt_pin_intent'); } catch(e) {}
             closeModal('modal-owner-pin');
             pinInput.value = '';
             soundOk();
-            var pinIntent = null;
-            try { pinIntent = localStorage.getItem('pt_pin_intent'); localStorage.removeItem('pt_pin_intent'); } catch(e) {}
             if (pinIntent === 'change_uid') {
                 openChangeUidActual(pendingEditPetStr);
             } else if (pinIntent === 'report_lost') {
