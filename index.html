@@ -1132,7 +1132,7 @@
             document.getElementById('pub-vet-name-carousel').innerText = pet.vet_nombre || 'Desconocido';
             document.getElementById('pub-vet-dir-carousel').innerText = pet.vet_direccion || 'Consulta con la veterinaria.';
             
-            document.getElementById('btn-whatsapp-carousel').onclick = () => window.open(waLink, '_blank');
+            document.getElementById('btn-whatsapp-carousel').onclick = () => sendWhatsAppWithLocation(pet.dueno_tel, pet.nombre);
             document.getElementById('btn-call-carousel').onclick = () => window.location.href = `tel:${pet.dueno_tel}`;
             if(pet.vet_tel) {
                 document.getElementById('btn-vet-call-carousel').onclick = () => window.location.href = `tel:${pet.vet_tel}`;
@@ -1599,7 +1599,7 @@
                             <div class="info-text">${pet.condiciones_medicas || '---'}</div>
                         </div>
 
-                        <button class="btn" style="background: ${btnColor}; color: white; margin-top: 20px; width: 100%; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3);" onclick="${isLost ? `toggleLostStatus('${pet.id}', true, 'owner')` : `openReportLostModal('${pet.id}')`}">
+                        <button class="btn" style="background: ${btnColor}; color: white; margin-top: 20px; width: 100%; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3);" onclick="${isLost ? `openReportFoundModal('${pet.id}')` : `openReportLostModal('${pet.id}')`}">
                             ${btnText}
                         </button>
 
@@ -1656,8 +1656,24 @@
 
     function openReportLostModal(petId) {
         _pendingLostPetId = petId;
-        document.getElementById('report-lost-recompensa').value = '';
-        openModal('modal-report-lost');
+        document.getElementById('owner-pin-input').value = '';
+        try { localStorage.setItem('pt_pin_intent', 'report_lost'); } catch(e) {}
+        openModal('modal-owner-pin');
+        setTimeout(function() {
+            var pinInput = document.getElementById('owner-pin-input');
+            if (pinInput) pinInput.focus();
+        }, 300);
+    }
+
+    function openReportFoundModal(petId) {
+        _pendingLostPetId = petId;
+        document.getElementById('owner-pin-input').value = '';
+        try { localStorage.setItem('pt_pin_intent', 'report_found'); } catch(e) {}
+        openModal('modal-owner-pin');
+        setTimeout(function() {
+            var pinInput = document.getElementById('owner-pin-input');
+            if (pinInput) pinInput.focus();
+        }, 300);
     }
 
     function confirmReportLost() {
@@ -1666,6 +1682,33 @@
         if (_pendingLostPetId) {
             toggleLostStatus(_pendingLostPetId, false, 'owner', recompensa);
             _pendingLostPetId = null;
+        }
+    }
+
+    function sendWhatsAppWithLocation(tel, petName) {
+        var baseMsg = 'Hola, encontré a tu mascota ' + petName + ' mediante su PeTApp.';
+
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                function(position) {
+                    var lat = position.coords.latitude;
+                    var lng = position.coords.longitude;
+                    var mapsLink = 'https://maps.google.com/?q=' + lat + ',' + lng;
+                    var fullMsg = baseMsg + ' Estoy en esta ubicación: ' + mapsLink;
+                    var waUrl = 'https://wa.me/' + tel + '?text=' + encodeURIComponent(fullMsg);
+                    window.open(waUrl, '_blank');
+                },
+                function(error) {
+                    // Usuario denegó ubicación o hubo error - enviar sin ubicación
+                    var waUrl = 'https://wa.me/' + tel + '?text=' + encodeURIComponent(baseMsg);
+                    window.open(waUrl, '_blank');
+                },
+                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+            );
+        } else {
+            // Navegador no soporta geolocalización
+            var waUrl = 'https://wa.me/' + tel + '?text=' + encodeURIComponent(baseMsg);
+            window.open(waUrl, '_blank');
         }
     }
 
@@ -1829,6 +1872,14 @@
             try { pinIntent = localStorage.getItem('pt_pin_intent'); localStorage.removeItem('pt_pin_intent'); } catch(e) {}
             if (pinIntent === 'change_uid') {
                 openChangeUidActual(pendingEditPetStr);
+            } else if (pinIntent === 'report_lost') {
+                document.getElementById('report-lost-recompensa').value = '';
+                openModal('modal-report-lost');
+            } else if (pinIntent === 'report_found') {
+                if (_pendingLostPetId) {
+                    toggleLostStatus(_pendingLostPetId, true, 'owner');
+                    _pendingLostPetId = null;
+                }
             } else {
                 openEditPetActual(pendingEditPetStr, 'owner');
             }
