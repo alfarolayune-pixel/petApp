@@ -1687,10 +1687,19 @@
 
     function sendWhatsAppWithLocation(tel, petName) {
         var baseMsg = 'Hola, encontré a tu mascota ' + petName + ' mediante su PeTApp.';
+        var waBtn = document.getElementById('btn-whatsapp-carousel');
+        var originalText = waBtn ? waBtn.innerHTML : '';
+
+        function restoreBtn() {
+            if (waBtn) { waBtn.innerHTML = originalText; waBtn.disabled = false; waBtn.style.opacity = '1'; }
+        }
 
         if (navigator.geolocation) {
+            // Feedback visual inmediato
+            if (waBtn) { waBtn.innerHTML = '📍 Obteniendo ubicación...'; waBtn.disabled = true; waBtn.style.opacity = '0.7'; }
             navigator.geolocation.getCurrentPosition(
                 function(position) {
+                    restoreBtn();
                     var lat = position.coords.latitude;
                     var lng = position.coords.longitude;
                     var mapsLink = 'https://maps.google.com/?q=' + lat + ',' + lng;
@@ -1699,6 +1708,7 @@
                     window.open(waUrl, '_blank');
                 },
                 function(error) {
+                    restoreBtn();
                     // Usuario denegó ubicación o hubo error - enviar sin ubicación
                     var waUrl = 'https://wa.me/' + tel + '?text=' + encodeURIComponent(baseMsg);
                     window.open(waUrl, '_blank');
